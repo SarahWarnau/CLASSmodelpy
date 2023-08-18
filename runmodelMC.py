@@ -112,7 +112,7 @@ run1input.c3c4       = 'c3'      # Plant type ('c3' or 'c4')
 run1input.sw_cu      = False     # Cumulus parameterization switch
 run1input.dz_h       = 150.      # Transition layer thickness [m]
 
-        # initialize moving column scheme
+# initialize moving column scheme
 run1input.slope      = 2.15      # Mountain slope angle (degrees)
 run1input.U          = 1.5       # Velocity of the moving column in x direction [m/s]
 
@@ -129,27 +129,35 @@ Init and run the model
 # run1input.sw_cu = True
 
 run1input.sw_ml      = True      # mixed-layer model switch
-run1input.sw_shearwe = False     # shear growth mixed-layer switch
+run1input.sw_shearwe = True     # shear growth mixed-layer switch
 run1input.sw_fixft   = False     # Fix the free-troposphere switch
 run1input.sw_wind    = False
 run1input.sw_sl      = True     # surface layer switch
-run1input.sw_rad     = False     # radiation switch
-run1input.sw_ls      = False     # land surface switch --> makes everything super sensitive to initial theta.
+run1input.sw_rad     = True     # radiation switch
+run1input.sw_ls      = True     # land surface switch --> makes everything super sensitive to initial theta.
 run1input.sw_cu      = False    # Cumulus parameterization switch
 run1input.sw_mc      = False    # Moving column switch
+run1input.sw_tech    = False    # Evaporation technology switch. Part of the land surface module.
 
 run1input.lat        = 45
 run1input.lon        = 40
 run1input.doy        = 1
 run1input.tstart     = 4
-run1input.runtime    = 9*3600 
+run1input.runtime    = 12*3600 
 
 
 r1 = model(run1input)
 r1.run()
 
 run2input = cp.deepcopy(run1input)
-run2input.sw_mc   = True
+run2input.sw_tech    = True
+run2input.sw_ls      = False
+# run2input.tech_cov   = 1. 
+run2input.rstech     = 100.
+run2input.alpha      = 0.1
+run2input.dt         = 60.
+run2input.runtime    = 12*3600
+
 
 
 r2 = model(run2input)
@@ -160,26 +168,26 @@ if __name__ == "__main__":
     Plot output
     """
     fig, ax = plt.subplots(3,2, figsize=(10,6), dpi=300)
-    ax[0,0].plot(r1.out.t, r1.out.x)
-    ax[0,1].plot(r1.out.t, r1.out.Ps)
-    ax[1,0].plot(r1.out.t, r1.out.T2m)
+    ax[0,0].plot(r1.out.t, r1.out.LE)
+    ax[0,1].plot(r1.out.t, r1.out.thetasurf)
+    ax[1,0].plot(r1.out.t, r1.out.q*1000)
     ax[1,1].plot(r1.out.t, r1.out.h)
     ax[2,0].plot(r1.out.t, r1.out.RH_h)
-    ax[2,1].plot(r1.out.t, r1.out.altitude)
+    ax[2,1].plot(r1.out.t, r1.out.H)
     
-    ax[0,0].plot(r2.out.t, r2.out.x)
-    ax[0,1].plot(r2.out.t, r2.out.Ps)
-    ax[1,0].plot(r2.out.t, r2.out.T2m)
+    ax[0,0].plot(r2.out.t, r2.out.LE)
+    ax[0,1].plot(r2.out.t, r2.out.thetasurf)
+    ax[1,0].plot(r2.out.t, r2.out.q*1000)
     ax[1,1].plot(r2.out.t, r2.out.h)
     ax[2,0].plot(r2.out.t, r2.out.RH_h)
-    ax[2,1].plot(r2.out.t, r2.out.altitude)
+    ax[2,1].plot(r2.out.t, r2.out.H)
     
-    ax[0,0].set_ylabel('x')
-    ax[0,1].set_ylabel('Ps')
-    ax[1,0].set_ylabel('T2m')
+    ax[0,0].set_ylabel('LE')
+    ax[0,1].set_ylabel('thetasurf')
+    ax[1,0].set_ylabel('q*1000')
     ax[1,1].set_ylabel('h')
     ax[2,0].set_ylabel('RH_h')
-    ax[2,1].set_ylabel('altitude')
+    ax[2,1].set_ylabel('H')
     
     fig.tight_layout()
     

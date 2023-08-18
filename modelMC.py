@@ -105,6 +105,8 @@ class model:
         self.sw_cu      = self.input.sw_cu      # cumulus parameterization switch
         # --MC--
         self.sw_mc      = self.input.sw_mc      # moving column switch
+        # --tech--
+        self.sw_tech    = self.input.sw_tech    # evaporation technology switch
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -303,6 +305,10 @@ class model:
         self.U          = self.input.U          # Velocity of the moving column in x direction [m/s]
         self.Tair_s     = self.input.theta      # Air temperature at the surface [K]
         self.Tsurf      = self.input.theta      # Surface temperature [K]
+        
+        # initializing evaporation technology scheme
+        # self.tech_cov   = self.input.tech_cov   # Fraction of the surface covered by the technology [-]
+        self.rstech     = self.input.rstech     # Surface resistance of the technology      
   
         # initialize time variables
         self.tsteps = int(np.floor(self.input.runtime / self.input.dt))
@@ -355,6 +361,9 @@ class model:
         # run land surface model
         if(self.sw_ls):
             self.run_land_surface()
+            
+        if(self.sw_tech):
+            self.run_technology()
  
         # run cumulus parameterization
         if(self.sw_cu):
@@ -433,6 +442,55 @@ class model:
         
         # self.slope      = self.input.slope      # Mountain slope angle [degrees]
         # self.U          = self.input.U          # Velocity of the moving column in x direction [m/s]
+        
+    def run_technology(self):
+        # compute ra
+        ueff = np.sqrt(self.u ** 2. + self.v ** 2. + self.wstar**2.)
+
+        if(self.sw_sl):
+          self.ra = (self.Cs * ueff)**-1.
+        else:
+          self.ra = ueff / max(1.e-3, self.ustar)**2.
+
+        # first calculate essential thermodynamic variables
+        if(self.sw_mc):
+            self.esat    = esat(self.Tair_s)
+            self.qsat    = qsat(self.Tair_s, self.Ps)
+            desatdT      = self.esat * (17.2694 / (self.Tair_s - 35.86) - 17.2694 * (self.Tair_s - 273.16) / (self.Tair_s - 35.86)**2.)
+        else:
+            self.esat    = esat(self.theta)
+            self.qsat    = qsat(self.theta, self.Ps)
+            desatdT      = self.esat * (17.2694 / (self.theta - 35.86) - 17.2694 * (self.theta - 273.16) / (self.theta - 35.86)**2.)
+        self.dqsatdT = 0.622 * desatdT / self.Ps
+        self.e       = self.q * self.Ps / 0.622
+     
+        # calculate skin temperature implictly
+        if(self.sw_mc):
+            self.Ts = self.Tair_s + self.ra/(self.rho*self.cp) * (self.Q - (self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.Tair_s) + self.qsat - self.q)) )
+        else:  
+            self.Ts = self.theta + self.ra/(self.rho*self.cp) * (self.Q - (self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)) )
+
+        # esatsurf      = esat(self.Ts)
+        self.qsatsurf = qsat(self.Ts, self.Ps)
+        if(self.sw_mc):
+            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.Tair_s) + self.qsat - self.q)
+        else:
+            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)
+  
+        self.LE     = self.LEtech #self.LEsoil + self.LEveg + self.LEliq
+        if(self.sw_mc):
+            self.H      = self.rho * self.cp / self.ra * (self.Ts - self.Tair_s)
+        else:
+            self.H      = self.rho * self.cp / self.ra * (self.Ts - self.theta)
+        self.G      = 0
+        self.LEpot  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv)
+        # self.LEref  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv * (1. + self.rsmin / self.LAI / self.ra))
+  
+        # calculate kinematic heat fluxes
+        self.wtheta   = self.H  / (self.rho * self.cp)
+        self.wq       = self.LE / (self.rho * self.Lv)
+
+         
 
     def run_cumulus(self):
         # Calculate mixed-layer top relative humidity variance (Neggers et. al 2006/7)
@@ -973,6 +1031,8 @@ class model:
         self.out.x[t]          = self.x
         self.out.altitude[t]   = self.altitude
         self.out.Ps[t]         = self.Ps 
+        
+        # evaporation technology
   
     # delete class variables to facilitate analysis in ipython
     def exitmodel(self):
@@ -1123,6 +1183,8 @@ class model:
         del(self.sw_sl)
         del(self.sw_wind)
         del(self.sw_shearwe)
+        del(self.sw_mc)
+        del(self.sw_tech)
         
         # moving column
         del(self.x)
@@ -1132,6 +1194,10 @@ class model:
         del(self.P0)
         del(self.Tsurf)
         del(self.Tair_s)
+        
+        # evaporation technology
+        # del(self.tech_cov)
+        del(self.rstech)
 
 # class for storing mixed-layer model output data
 class model_output:
@@ -1229,6 +1295,9 @@ class model_output:
         self.altitude   = np.zeros(tsteps)    # Altitude (above starting point) [m]
         self.Ps         = np.zeros(tsteps)    # Surface pressure [Pa]
         self.Tsurf      = np.zeros(tsteps)    # Surface temperature [K]
+        
+        # evaporation technology
+        
 
 # class for storing mixed-layer model input data
 class model_input:
@@ -1345,3 +1414,7 @@ class model_input:
         self.altitude   = None  # Altitude (above starting point) [m]
         self.Tsurf      = None  # Surface temperature [K]
         self.Tair_s     = None  # Air temperature at the surface [K]
+        
+        # evaporation technology
+        # self.tech_cov   = None
+        self.rstech     = None # Surface resistance of the technology
