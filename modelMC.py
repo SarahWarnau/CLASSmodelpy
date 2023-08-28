@@ -33,6 +33,9 @@ def esat(T):
 def qsat(T,p):
     return 0.622 * esat(T) / p
 
+def calc_rho(p,T,R):
+    return p/(R*T)
+
 class model:
     def __init__(self, model_input):
         # initialize the different components of the model
@@ -427,7 +430,9 @@ class model:
             print("RHlcl = %f, zlcl=%f"%(RHlcl, self.lcl))
             print("\a")
     
-    def run_moving_column(self):               
+    def run_moving_column(self):
+        self.rho = calc_rho(p=self.Ps, T=self.Tair_s, R=self.Rd) #(1-self.q)*8.314/29e-3 + self.q*8.314/18e-3)
+        
         self.dx         = self.U*self.dt    # Location tendency [m]
         self.daltitude  = np.sin(np.deg2rad(self.slope))*self.dx 
         self.dPs        = -self.rho*self.g*self.daltitude    # Pressure tendency [m]
@@ -1038,6 +1043,7 @@ class model:
         self.out.x[t]          = self.x
         self.out.altitude[t]   = self.altitude
         self.out.Ps[t]         = self.Ps 
+        self.out.rho[t]        = self.rho
         
         # evaporation technology
   
@@ -1302,6 +1308,7 @@ class model_output:
         self.altitude   = np.zeros(tsteps)    # Altitude (above starting point) [m]
         self.Ps         = np.zeros(tsteps)    # Surface pressure [Pa]
         self.Tsurf      = np.zeros(tsteps)    # Surface temperature [K]
+        self.rho        = np.zeros(tsteps)    # Air density [kg m-3]
         
         # evaporation technology
         

@@ -154,14 +154,15 @@ r1 = model(run1input)
 r1.run()
 
 run2input = cp.deepcopy(run1input)
-run2input.sw_tech    = True
-run2input.sw_ls      = False # needs to be false for technology to work.
-# run2input.tech_cov   = 1. 
-run2input.rstech     = 0. # [s m-1]
-run2input.alpha      = 0.1
-run2input.dt         = 60.
-run2input.runtime    = 12*3600
+# run2input.sw_tech    = True
+# run2input.sw_ls      = False # needs to be false for technology to work.
+# # run2input.tech_cov   = 1. 
+# run2input.rstech     = 0. # [s m-1]
+# run2input.alpha      = 0.1
+# run2input.dt         = 60.
+# run2input.runtime    = 12*3600
 
+run2input.sw_mc      = True
 
 
 r2 = model(run2input)
