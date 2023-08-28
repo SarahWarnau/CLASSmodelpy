@@ -427,8 +427,7 @@ class model:
             print("RHlcl = %f, zlcl=%f"%(RHlcl, self.lcl))
             print("\a")
     
-    def run_moving_column(self):
-        # self.x          = 0.                    
+    def run_moving_column(self):               
         self.dx         = self.U*self.dt    # Location tendency [m]
         self.daltitude  = np.sin(np.deg2rad(self.slope))*self.dx 
         self.dPs        = -self.rho*self.g*self.daltitude    # Pressure tendency [m]
@@ -456,26 +455,33 @@ class model:
         if(self.sw_mc):
             self.esat    = esat(self.Tair_s)
             self.qsat    = qsat(self.Tair_s, self.Ps)
-            desatdT      = self.esat * (17.2694 / (self.Tair_s - 35.86) - 17.2694 * (self.Tair_s - 273.16) / (self.Tair_s - 35.86)**2.)
+            desatdT      = self.esat * (17.2694 / (self.Tair_s - 35.86) - 17.2694 * \
+                                        (self.Tair_s - 273.16) / (self.Tair_s - 35.86)**2.)
         else:
             self.esat    = esat(self.theta)
             self.qsat    = qsat(self.theta, self.Ps)
-            desatdT      = self.esat * (17.2694 / (self.theta - 35.86) - 17.2694 * (self.theta - 273.16) / (self.theta - 35.86)**2.)
+            desatdT      = self.esat * (17.2694 / (self.theta - 35.86) - 17.2694 * \
+                                        (self.theta - 273.16) / (self.theta - 35.86)**2.)
         self.dqsatdT = 0.622 * desatdT / self.Ps
         self.e       = self.q * self.Ps / 0.622
      
         # calculate skin temperature implictly
         if(self.sw_mc):
-            self.Ts = self.Tair_s + self.ra/(self.rho*self.cp) * (self.Q - (self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.Tair_s) + self.qsat - self.q)) )
+            self.Ts = (self.Q*(self.ra + self.rstech)/(self.rho*self.Lv) - self.qsat + self.q) / \
+                ((self.cp*(self.ra + self.rstech)/(self.Lv*self.ra)) + self.dqsatdT) \
+                    + self.Tair_s
         else:  
-            self.Ts = self.theta + self.ra/(self.rho*self.cp) * (self.Q - (self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)) )
-
+            self.Ts = (self.Q*(self.ra + self.rstech)/(self.rho*self.Lv) - self.qsat + self.q) / \
+                ((self.cp*(self.ra + self.rstech)/(self.Lv*self.ra)) + self.dqsatdT) \
+                    + self.theta
         # esatsurf      = esat(self.Ts)
         self.qsatsurf = qsat(self.Ts, self.Ps)
         if(self.sw_mc):
-            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.Tair_s) + self.qsat - self.q)
+            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * \
+                (self.dqsatdT * (self.Ts - self.Tair_s) + self.qsat - self.q)
         else:
-            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)
+            self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * \
+                (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)
   
         self.LE     = self.LEtech #self.LEsoil + self.LEveg + self.LEliq
         if(self.sw_mc):
@@ -483,7 +489,8 @@ class model:
         else:
             self.H      = self.rho * self.cp / self.ra * (self.Ts - self.theta)
         self.G      = 0
-        self.LEpot  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv)
+        self.LEpot  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / \
+                       self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv)
         # self.LEref  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv * (1. + self.rsmin / self.LAI / self.ra))
   
         # calculate kinematic heat fluxes
