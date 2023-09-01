@@ -299,9 +299,9 @@ class model:
         
         # initialize moving column scheme
         self.x          = 0.                    # Location [m]
-        self.dx         = None                  # Location tendency [m]
+        self.dx         = 0.                  # Location tendency [m]
         self.altitude   = 0. 
-        self.daltitude  = None
+        self.daltitude  = 0.
         self.P0         = self.input.Ps         # Reference pressure [Pa]
         self.dPs        = None                  # Pressure tendency [m]
         self.slope      = self.input.slope      # Mountain slope angle [degrees]
@@ -525,6 +525,9 @@ class model:
             self.wCO2M  = 0.
 
     def run_mixed_layer(self):
+        # if(self.sw_mc):
+        #     self.gammatheta = self.input.gammatheta/(1 + self.daltitude)
+        
         if(not self.sw_sl):
             # decompose ustar along the wind components
             self.uw = - np.sign(self.u) * (self.ustar ** 4. / (self.v ** 2. / self.u ** 2. + 1.)) ** (0.5)
@@ -576,7 +579,10 @@ class model:
         self.qtend       = (self.wq     - self.wqe     - self.wqM  ) / self.h + self.advq
         self.CO2tend     = (self.wCO2   - self.wCO2e   - self.wCO2M) / self.h + self.advCO2
         
-        self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M) - self.thetatend + w_th_ft
+        if(self.sw_mc):
+            self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M + self.daltitude) - self.thetatend + w_th_ft
+        else:
+            self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M) - self.thetatend + w_th_ft
         self.dqtend      = self.gammaq     * (self.we + self.wf - self.M) - self.qtend     + w_q_ft
         self.dCO2tend    = self.gammaCO2   * (self.we + self.wf - self.M) - self.CO2tend   + w_CO2_ft
      
@@ -639,7 +645,7 @@ class model:
         sinlea = max(sinlea, 0.0001)
         
         if(self.sw_mc):
-            Ta  = self.Tair_s * ((self.Ps - 0.1 * self.h * self.rho * self.g) / self.Ps ) ** (self.Rd / self.cp)
+            Ta  = self.theta * ((self.Ps - 0.1 * self.h * self.rho * self.g) / self.P0 ) ** (self.Rd / self.cp)
         else:
             Ta  = self.theta * ((self.Ps - 0.1 * self.h * self.rho * self.g) / self.Ps ) ** (self.Rd / self.cp)
   
@@ -655,7 +661,10 @@ class model:
     def run_surface_layer(self):
         ueff           = max(0.01, np.sqrt(self.u**2. + self.v**2. + self.wstar**2.))
         self.thetasurf = self.theta + self.wtheta / (self.Cs * ueff)
-        qsatsurf       = qsat(self.thetasurf, self.Ps)
+        if(self.sw_mc):
+            qsatsurf       = qsat(self.thetasurf*(self.Ps/self.P0)**(self.Rd/self.cp), self.Ps)
+        else:
+            qsatsurf       = qsat(self.thetasurf, self.Ps)
         cq             = (1. + self.Cs * ueff * self.rs) ** -1.
         self.qsurf     = (1. - cq) * self.q + cq * qsatsurf
 
@@ -677,7 +686,7 @@ class model:
  
         # diagnostic meteorological variables
         if(self.sw_mc):
-            self.T2m = self.Tsurf - self.wtheta / self.ustar / self.k * (np.log(2. / self.z0h) - self.psih(2. / self.L) + self.psih(self.z0h / self.L))
+            self.T2m = (self.thetasurf - self.wtheta / self.ustar / self.k * (np.log(2. / self.z0h) - self.psih(2. / self.L) + self.psih(self.z0h / self.L)))*(self.Ps/self.P0)**(self.Rd/self.cp)
         else:
             self.T2m    = self.thetasurf - self.wtheta / self.ustar / self.k * (np.log(2. / self.z0h) - self.psih(2. / self.L) + self.psih(self.z0h / self.L))
         self.q2m    = self.qsurf     - self.wq     / self.ustar / self.k * (np.log(2. / self.z0h) - self.psih(2. / self.L) + self.psih(self.z0h / self.L))
@@ -1044,6 +1053,9 @@ class model:
         self.out.altitude[t]   = self.altitude
         self.out.Ps[t]         = self.Ps 
         self.out.rho[t]        = self.rho
+        self.out.Tsurf[t]      = self.Tsurf
+        self.out.Ts[t]         = self.Ts
+        self.out.Tair_s[t]      = self.Tair_s
         
         # evaporation technology
   
@@ -1308,6 +1320,8 @@ class model_output:
         self.altitude   = np.zeros(tsteps)    # Altitude (above starting point) [m]
         self.Ps         = np.zeros(tsteps)    # Surface pressure [Pa]
         self.Tsurf      = np.zeros(tsteps)    # Surface temperature [K]
+        self.Ts      = np.zeros(tsteps)    # Surface temperature [K]
+        self.Tair_s     = np.zeros(tsteps)    # Air temperature at the surface [K]
         self.rho        = np.zeros(tsteps)    # Air density [kg m-3]
         
         # evaporation technology

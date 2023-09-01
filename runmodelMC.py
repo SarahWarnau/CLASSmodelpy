@@ -133,7 +133,7 @@ Init and run the model
 # run1input.sw_cu = True
 
 run1input.sw_ml      = True      # mixed-layer model switch
-run1input.sw_shearwe = True     # shear growth mixed-layer switch
+run1input.sw_shearwe = False     # shear growth mixed-layer switch
 run1input.sw_fixft   = False     # Fix the free-troposphere switch
 run1input.sw_wind    = False
 run1input.sw_sl      = True     # surface layer switch
@@ -172,27 +172,33 @@ if __name__ == "__main__":
     """
     Plot output
     """
-    fig, ax = plt.subplots(3,2, figsize=(10,6), dpi=300)
+    fig, ax = plt.subplots(4,2, figsize=(10,6), dpi=300)
     ax[0,0].plot(r1.out.t, r1.out.LE)
-    ax[0,1].plot(r1.out.t, r1.out.thetasurf)
+    ax[0,1].plot(r1.out.t, r1.out.H)
     ax[1,0].plot(r1.out.t, r1.out.q*1000)
     ax[1,1].plot(r1.out.t, r1.out.h)
     ax[2,0].plot(r1.out.t, r1.out.RH_h)
-    ax[2,1].plot(r1.out.t, r1.out.H)
+    ax[2,1].plot(r1.out.t, r1.out.Tsurf)
+    ax[3,0].plot(r1.out.t, r1.out.Ts)
+    ax[3,1].plot(r1.out.t, r1.out.Tsurf)
     
     ax[0,0].plot(r2.out.t, r2.out.LE)
-    ax[0,1].plot(r2.out.t, r2.out.thetasurf)
+    ax[0,1].plot(r2.out.t, r2.out.H)
     ax[1,0].plot(r2.out.t, r2.out.q*1000)
     ax[1,1].plot(r2.out.t, r2.out.h)
     ax[2,0].plot(r2.out.t, r2.out.RH_h)
-    ax[2,1].plot(r2.out.t, r2.out.H)
+    ax[2,1].plot(r2.out.t, r2.out.Tsurf)
+    ax[3,0].plot(r2.out.t, r2.out.Ts)
+    ax[3,1].plot(r2.out.t, r2.out.Tsurf)
     
     ax[0,0].set_ylabel('LE')
-    ax[0,1].set_ylabel('thetasurf')
+    ax[0,1].set_ylabel('H')
     ax[1,0].set_ylabel('q*1000')
     ax[1,1].set_ylabel('h')
     ax[2,0].set_ylabel('RH_h')
-    ax[2,1].set_ylabel('H')
+    ax[2,1].set_ylabel('Tsurf')
+    ax[3,0].set_ylabel('altitude')
+    ax[3,1].set_ylabel('dtheta')
     
     fig.tight_layout()
     
