@@ -55,6 +55,7 @@ class model:
         self.exitmodel()
     
     def init(self):
+        self.sw_test = self.input.sw_test 
         # assign variables from input data
         # initialize constants
         self.Lv         = 2.5e6                 # heat of vaporization [J kg-1]
@@ -311,7 +312,8 @@ class model:
         
         # initializing evaporation technology scheme
         # self.tech_cov   = self.input.tech_cov   # Fraction of the surface covered by the technology [-]
-        self.rstech     = self.input.rstech     # Surface resistance of the technology      
+        self.rstech     = self.input.rstech     # Surface resistance of the technology   
+        self.tech_cutoff = self.input.tech_cutoff # when in moving column mode, distance to cross after cutoff of technology [m]
   
         # initialize time variables
         self.tsteps = int(np.floor(self.input.runtime / self.input.dt))
@@ -434,18 +436,37 @@ class model:
         self.rho = calc_rho(p=self.Ps, T=self.Tair_s, R=self.Rd) #(1-self.q)*8.314/29e-3 + self.q*8.314/18e-3)
         
         self.dx         = self.U*self.dt    # Location tendency [m]
-        self.daltitude  = np.sin(np.deg2rad(self.slope))*self.dx 
-        self.dPs        = -self.rho*self.g*self.daltitude    # Pressure tendency [m]
-        
         self.x          = self.x + self.dx  # Location [m]
+        
+        self.U          = self.input.U - (3.1/55000)*self.x  # Velocity of the moving column in x direction [m/s]
+        
+        
+        # self.daltitude  = np.sin(np.deg2rad(self.slope))*self.dx 
+        # self.daltitude = (0.03/1000)*1300*np.cos(0.03*self.x/1000)
+        # self.daltitude = (0.03/1000)*1300*np.cos(0.03*self.x/1000)*self.U
+        # self.daltitude =  0.039 *np.cos(0.00003 *self.x)*self.U 
+        # self.altitude   = self.altitude + self.daltitude
+        altitude_old = self.altitude
+        self.altitude = 1300*np.sin(0.03*self.x/1000)
+        self.daltitude = self.altitude - altitude_old 
+        
+        
+        self.dPs        = -self.rho*self.g*self.daltitude    # Pressure tendency [m] self.P_h    = self.Ps - self.rho * self.g * self.h # hydrostatic balance
+    
         self.Ps         = self.Ps + self.dPs 
-        self.altitude   = self.altitude + self.daltitude
+        
+        # self.Ps         = self.P0 -self.rho*self.g*self.altitude 
+        
         
         self.Tair_s     = self.theta*(self.Ps/self.P0)**(self.Rd/self.cp)
         self.Tsurf      = self.thetasurf*(self.Ps/self.P0)**(self.Rd/self.cp)
         
         # self.slope      = self.input.slope      # Mountain slope angle [degrees]
-        # self.U          = self.input.U          # Velocity of the moving column in x direction [m/s]
+        
+        if(self.sw_tech):
+            if(self.x>self.tech_cutoff):
+                self.sw_tech = False
+                self.sw_ls = True 
         
     def run_technology(self):
         # compute ra
@@ -526,7 +547,10 @@ class model:
 
     def run_mixed_layer(self):
         # if(self.sw_mc):
-        #     self.gammatheta = self.input.gammatheta/(1 + self.daltitude)
+            # self.gammatheta = self.input.gammatheta/(1 - self.daltitude/self.dt)
+            # self.gammatheta = self.input.gammatheta*self.daltitude/self.dt 
+            # self.gammatheta = self.input.gammatheta + self.input.gammatheta*self.daltitude
+            # print(self.gammatheta)
         
         if(not self.sw_sl):
             # decompose ustar along the wind components
@@ -535,6 +559,9 @@ class model:
       
         # calculate large-scale vertical velocity (subsidence)
         self.ws = -self.divU * self.h
+        
+        if(self.sw_mc and not self.sw_test):
+            self.ws = -self.daltitude/self.dt
       
         # calculate compensation to fix the free troposphere in case of subsidence 
         if(self.sw_fixft):
@@ -563,6 +590,9 @@ class model:
             self.we    = (-self.wthetave + 5. * self.ustar ** 3. * self.thetav / (self.g * self.h)) / self.dthetav
         else:
             self.we    = -self.wthetave / self.dthetav
+            
+        if(self.sw_mc and not self.sw_test):
+            self.we += self.daltitude/self.dt
 
         # Don't allow boundary layer shrinking if wtheta < 0 
         if(self.we < 0):
@@ -576,13 +606,12 @@ class model:
         self.htend       = self.we + self.ws + self.wf - self.M
        
         self.thetatend   = (self.wtheta - self.wthetae             ) / self.h + self.advtheta 
+        # if(self.sw_mc):
+        #     self.thetatend   = (self.wtheta - self.wthetae             ) / (self.h + self.advtheta 
         self.qtend       = (self.wq     - self.wqe     - self.wqM  ) / self.h + self.advq
         self.CO2tend     = (self.wCO2   - self.wCO2e   - self.wCO2M) / self.h + self.advCO2
         
-        if(self.sw_mc):
-            self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M + self.daltitude) - self.thetatend + w_th_ft
-        else:
-            self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M) - self.thetatend + w_th_ft
+        self.dthetatend  = self.gammatheta * (self.we + self.wf - self.M) - self.thetatend + w_th_ft
         self.dqtend      = self.gammaq     * (self.we + self.wf - self.M) - self.qtend     + w_q_ft
         self.dCO2tend    = self.gammaCO2   * (self.we + self.wf - self.M) - self.CO2tend   + w_CO2_ft
      
@@ -1015,6 +1044,8 @@ class model:
         self.out.e2m[t]        = self.e2m
         self.out.esat2m[t]     = self.esat2m
         
+        self.out.P_h[t]        = self.P_h
+        
         self.out.thetasurf[t]  = self.thetasurf
         self.out.thetavsurf[t] = self.thetavsurf
         self.out.qsurf[t]      = self.qsurf
@@ -1051,6 +1082,7 @@ class model:
         # moving column
         self.out.x[t]          = self.x
         self.out.altitude[t]   = self.altitude
+        self.out.U[t]          = self.U
         self.out.Ps[t]         = self.Ps 
         self.out.rho[t]        = self.rho
         self.out.Tsurf[t]      = self.Tsurf
@@ -1058,6 +1090,7 @@ class model:
         self.out.Tair_s[t]      = self.Tair_s
         
         # evaporation technology
+        
   
     # delete class variables to facilitate analysis in ipython
     def exitmodel(self):
@@ -1223,6 +1256,7 @@ class model:
         # evaporation technology
         # del(self.tech_cov)
         del(self.rstech)
+        del(self.tech_cutoff)
 
 # class for storing mixed-layer model output data
 class model_output:
@@ -1274,6 +1308,8 @@ class model_output:
         self.v2m        = np.zeros(tsteps)    # 2m v-wind [m s-1]    
         self.e2m        = np.zeros(tsteps)    # 2m vapor pressure [Pa]
         self.esat2m     = np.zeros(tsteps)    # 2m saturated vapor pressure [Pa]
+        
+        self.P_h        = np.zeros(tsteps)
 
         # surface-layer variables
         self.thetasurf  = np.zeros(tsteps)    # surface potential temperature [K]
@@ -1318,6 +1354,7 @@ class model_output:
         # moving column
         self.x          = np.zeros(tsteps)    # Location [m]
         self.altitude   = np.zeros(tsteps)    # Altitude (above starting point) [m]
+        self.U          = np.zeros(tsteps)    # Speed of the column [m/s]
         self.Ps         = np.zeros(tsteps)    # Surface pressure [Pa]
         self.Tsurf      = np.zeros(tsteps)    # Surface temperature [K]
         self.Ts      = np.zeros(tsteps)    # Surface temperature [K]
@@ -1330,6 +1367,8 @@ class model_output:
 # class for storing mixed-layer model input data
 class model_input:
     def __init__(self):
+        self.sw_test = None
+        
         # general model variables
         self.runtime    = None  # duration of model run [s]
         self.dt         = None  # time step [s]
@@ -1446,3 +1485,4 @@ class model_input:
         # evaporation technology
         # self.tech_cov   = None
         self.rstech     = None # Surface resistance of the technology
+        self.tech_cutoff = None

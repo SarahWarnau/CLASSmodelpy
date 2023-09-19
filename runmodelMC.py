@@ -14,6 +14,7 @@ import copy as cp
 from pylab import *
 from modelMC import *
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(style='whitegrid')
@@ -120,6 +121,8 @@ run1input.dz_h       = 150.      # Transition layer thickness [m]
 run1input.slope      = 2.15      # Mountain slope angle (degrees)
 run1input.U          = 1.5       # Velocity of the moving column in x direction [m/s]
 
+
+
 """
 Init and run the model
 """
@@ -133,75 +136,234 @@ Init and run the model
 # run1input.sw_cu = True
 
 run1input.sw_ml      = True      # mixed-layer model switch
-run1input.sw_shearwe = False     # shear growth mixed-layer switch
+run1input.sw_shearwe = True     # shear growth mixed-layer switch
 run1input.sw_fixft   = False     # Fix the free-troposphere switch
 run1input.sw_wind    = False
-run1input.sw_sl      = True     # surface layer switch
+run1input.sw_sl      = True       # surface layer switch
 run1input.sw_rad     = True     # radiation switch
 run1input.sw_ls      = True     # land surface switch --> makes everything super sensitive to initial theta.
 run1input.sw_cu      = False    # Cumulus parameterization switch
-run1input.sw_mc      = False    # Moving column switch
+# run1input.sw_mc      = False    # Moving column switch
 run1input.sw_tech    = False    # Evaporation technology switch. Part of the land surface module.
+run1input.sw_test = False 
 
-run1input.lat        = 45
-run1input.lon        = 40
-run1input.doy        = 1
-run1input.tstart     = 4
-run1input.runtime    = 12*3600 
+run1input.lat        = 40
+run1input.lon        = 0
+run1input.doy        = 106 # mid April
+run1input.tstart     = 6
 
+run1input.alpha = 0.33
+run1input.wg = 0.255
+run1input.w2 = run1input.wg
+
+
+
+run1input.theta = 294
+run1input.gammatheta = 4.5e-3 
+run1input.gammaq = -1.5e-6
+run1input.q = 8.5e-3
+run1input.h = 600
+run1input.slope = np.rad2deg(np.arctan(1.3/55))
+run1input.U          = 3.3
+# run1input.runtime    = 55e3 /run1input.U
+run1input.runtime = -17741.9 * np.log(3548.4/58548.4)
+
+
+run1input.sw_mc      = True
 
 r1 = model(run1input)
 r1.run()
 
-run2input = cp.deepcopy(run1input)
-# run2input.sw_tech    = True
-# run2input.sw_ls      = False # needs to be false for technology to work.
-# # run2input.tech_cov   = 1. 
-# run2input.rstech     = 0. # [s m-1]
-# run2input.alpha      = 0.1
-# run2input.dt         = 60.
-# run2input.runtime    = 12*3600
 
-run2input.sw_mc      = True
+
+run2input = cp.deepcopy(run1input)
+
+run2input.sw_tech    = True
+run2input.sw_ls      = False  # needs to be false for technology to work.
+run2input.tech_cov   = 1. 
+run2input.rstech     = 0. # [s m-1]
+run2input.alpha      = 0.1
+run2input.dt         = 60.
+run2input.tech_cutoff = 10e3
+
+
+
 
 
 r2 = model(run2input)
-r2.run()
+# r2.run()
+        
+# run3input = cp.deepcopy(run2input)
+# run3input.sw_test = True
+# r3 = model(run3input)
+# r3.run()
+
+
 
 if __name__ == "__main__":
     """
     Plot output
     """
-    fig, ax = plt.subplots(4,2, figsize=(10,6), dpi=300)
-    ax[0,0].plot(r1.out.t, r1.out.LE)
-    ax[0,1].plot(r1.out.t, r1.out.H)
-    ax[1,0].plot(r1.out.t, r1.out.q*1000)
-    ax[1,1].plot(r1.out.t, r1.out.h)
-    ax[2,0].plot(r1.out.t, r1.out.RH_h)
-    ax[2,1].plot(r1.out.t, r1.out.Tsurf)
-    ax[3,0].plot(r1.out.t, r1.out.Ts)
-    ax[3,1].plot(r1.out.t, r1.out.Tsurf)
+    def find_nearest(array, value):
+        """
+        Function to find the index of the value in an array nearest to given value
+        By Gijs van Leeuwen https://github.com/gjvanleeuwen
+
+        Parameters
+        ----------
+        array : 1d.array
+            1d np array wih random values, floats or ints
+        value : float or int
+            value to look for in array
+
+        Returns
+        -------
+        idx : int
+            index for nearest value
+
+        """
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return idx
+
     
-    ax[0,0].plot(r2.out.t, r2.out.LE)
-    ax[0,1].plot(r2.out.t, r2.out.H)
-    ax[1,0].plot(r2.out.t, r2.out.q*1000)
-    ax[1,1].plot(r2.out.t, r2.out.h)
-    ax[2,0].plot(r2.out.t, r2.out.RH_h)
-    ax[2,1].plot(r2.out.t, r2.out.Tsurf)
-    ax[3,0].plot(r2.out.t, r2.out.Ts)
-    ax[3,1].plot(r2.out.t, r2.out.Tsurf)
+    fig, ax = plt.subplots(4,3, figsize=(10,10), dpi=300)
+    # ax[0,0].plot(r1.out.t[1:], r1.out.LE[1:])
+    # ax[0,1].plot(r1.out.t[2:], r1.out.H[2:])
+    # ax[1,0].plot(r1.out.t, r1.out.q*1000)
+    # ax[1,1].plot(r1.out.t, r1.out.theta)
+    # ax[2,0].plot(r1.out.t, r1.out.RH_h)
+    # ax[2,1].plot(r1.out.t[3:], r1.out.T2m[3:])
+    # ax[0,2].plot(r1.out.t, r1.out.altitude)
+    # ax[1,2].plot(r1.out.t, r1.out.h)
+    # ax[1,2].plot(r1.out.t, r1.out.zlcl, linestyle='--', c='tab:blue')
+    # ax[2,2].plot(r1.out.t, r1.out.dtheta)
+    
+    n_runs = 5
+    colors=plt.cm.nipy_spectral(np.linspace(0,1,n_runs+2))
+    
+    df = pd.DataFrame(columns=['H2Otech', 'H2Onotech', 'diff'])
+    
+    times = np.linspace(5,9,n_runs)
+    
+    for i, t in enumerate(times):
+        run2input.tstart = t
+        r2 = model(run2input)
+        r2.run()
+        
+        H2Otech = np.sum(r2.out.LE*run2input.dt/(2257*1000*1000))*1000
+        
+        run1input.tstart = t
+        r1 = model(run1input)
+        r1.run()
+        
+        H2Onotech = np.sum(r1.out.LE*run1input.dt/(2257*1000*1000))*1000
+        
+        df.loc[i] = [H2Otech, H2Onotech, H2Otech - H2Onotech]
+        
+        
+        i += 1
+
+        # ax[0,0].plot(r2.out.t[1:], r2.out.LE[1:])
+        # ax[0,1].plot(r2.out.t[2:], r2.out.H[2:])
+        # ax[1,0].plot(r2.out.t, r2.out.q*1000)
+        # ax[1,1].plot(r2.out.t, r2.out.theta)
+        # ax[2,0].plot(r2.out.t, r2.out.RH_h)
+        # ax[2,1].plot(r2.out.t[3:], r2.out.T2m[3:])
+        # ax[0,2].plot(r2.out.t, r2.out.altitude)
+        # ax[1,2].plot(r2.out.t, r2.out.h)
+        # ax[1,2].plot(r2.out.t, r2.out.zlcl, linestyle='--', c='tab:orange')
+        # ax[2,2].plot(r2.out.t, r2.out.dtheta)
+        
+        ax[0,0].plot(r2.out.t[1:], r2.out.LE[1:], c=colors[i])
+        ax[0,1].plot(r2.out.t[2:], r2.out.H[2:], c=colors[i])
+        ax[1,0].plot(r2.out.x/1000, r2.out.q*1000, c=colors[i])
+        ax[1,1].plot(r2.out.x/1000, r2.out.theta, c=colors[i])
+        ax[2,0].plot(r2.out.x/1000, r2.out.RH_h, c=colors[i])
+        # ax[2,0].plot(r2.out.t, r2.out.RH_h, c=colors[i])
+        ax[2,1].plot(r2.out.x[3:]/1000, r2.out.T2m[3:], c=colors[i])
+        ax[0,2].plot(r2.out.t, r2.out.Q, c=colors[i])
+        ax[1,2].plot(r2.out.x/1000, r2.out.h, c=colors[i], label=np.round(t,2))
+        # ax[1,2].plot(r2.out.t-t, r2.out.zlcl, linestyle='--', c='tab:orange')
+        ax[2,2].plot(r2.out.x/1000, r2.out.dtheta, c=colors[i])
+
+
+
+        # ax[0,0].plot(r1.out.t[1:], r1.out.LE[1:], c=colors[i], linestyle='--')
+        # ax[0,1].plot(r1.out.t[2:], r1.out.H[2:], c=colors[i], linestyle='--')
+        # ax[1,0].plot(r1.out.x/1000, r1.out.q*1000, c=colors[i], linestyle='--')
+        # ax[1,1].plot(r1.out.x/1000, r1.out.theta, c=colors[i], linestyle='--')
+        # ax[2,0].plot(r1.out.x/1000, r1.out.RH_h, c=colors[i], linestyle='--')
+        # # ax[2,0].plot(r1.out.t, r1.out.RH_h, c=colors[i], linestyle='--')
+        # ax[2,1].plot(r1.out.x[3:]/1000, r1.out.T2m[3:], c=colors[i], linestyle='--')
+        # ax[0,2].plot(r1.out.t, r1.out.Q, c=colors[i], linestyle='--')
+        # ax[1,2].plot(r1.out.x/1000, r1.out.h, c=colors[i], linestyle='--')#, label=np.round(t,2))
+        # # ax[1,2].plot(r1.out.t-t, r1.out.zlcl, linestyle='--', c='tab:orange')
+        # ax[2,2].plot(r1.out.x/1000, r1.out.dtheta, c=colors[i], linestyle='--')  
+        
+        # t12 = find_nearest(r1.out.t, 12)
+        # ax[3,2].scatter(r1.out.x[t12]/1000, r1.out.H[t12], color='r')
+        # ax[3,2].scatter(r1.out.x[t12]/1000, r1.out.LE[t12], color='b')
+    # ax[0,0].plot(r3.out.t[1:], r3.out.LE[1:])
+    # ax[0,1].plot(r3.out.t[2:], r3.out.H[2:])
+    # ax[1,0].plot(r3.out.t, r3.out.q*1000)
+    # ax[1,1].plot(r3.out.t, r3.out.theta)
+    # ax[2,0].plot(r3.out.t, r3.out.RH_h)
+    # ax[2,1].plot(r3.out.t[3:], r3.out.T2m[3:])
+    # ax[0,2].plot(r3.out.t, r3.out.altitude)
+    # ax[1,2].plot(r3.out.t, r3.out.h)
+    # ax[1,2].plot(r3.out.t, r3.out.zlcl, linestyle='--', c='tab:green')
+    # ax[2,2].plot(r3.out.t, r3.out.dtheta)
+
     
     ax[0,0].set_ylabel('LE')
     ax[0,1].set_ylabel('H')
     ax[1,0].set_ylabel('q*1000')
-    ax[1,1].set_ylabel('h')
-    ax[2,0].set_ylabel('RH_h')
-    ax[2,1].set_ylabel('Tsurf')
-    ax[3,0].set_ylabel('altitude')
-    ax[3,1].set_ylabel('dtheta')
+    ax[1,1].set_ylabel(r'$\theta$')
+    ax[2,0].set_ylabel('RH(z=h)')
+    ax[2,1].set_ylabel(r'T$_{2m}$')
+    ax[0,2].set_ylabel('Q')
+    ax[1,2].set_ylabel('ABL top')
+    ax[2,2].set_ylabel(r'$\Delta \theta$')
+    
+    for axis in ax:
+        for i in range(len(axis)):
+            axis[i].set_xlabel('x (km)')
+    ax[0,0].set_xlabel('time (hour)')
+    ax[0,1].set_xlabel('time (hour)')
+    ax[0,2].set_xlabel('time (hour)')
+    
+    
+    ax[3,0].scatter(times, df['diff'].values)
+    ax[3,0].set_xlabel('column start time (hour)')
+    ax[3,0].set_ylabel('Extra evap. [mm]')
+    dt = np.mean(times[1:] - times[:-1])
+    ax[3,0].text(x=times[0], y=df['diff'].values[-2], 
+                      s=f"{np.round(np.sum(df['diff'].values)*dt, 2)} mm per day")
+    
+    # ax[3,1].plot(r1.out.x, r1.out.Ps)
+    # ax[3,1].plot(r1.out.x, r1.out.P_h)
+    
+    ax[3,2].plot(r1.out.x, r1.out.altitude)
+    ax[3,2].set_ylabel('altitude')
+
+    
+    ax[1,2].legend()
     
     fig.tight_layout()
+    # plt.show()
+    
+    
+    
+    
+    # print(r1.out.theta.max() - r1.out.theta.min())
+    # print(r1.out.theta[-1] - r1.out.theta[0])
+    # print(r1.out.q.max()*1000)
+    # print(r1.out.q[-1]*1000)
+    # print(np.sum(r1.out.wq)*run1input.dt)
     
 
     # subplot(234)
     # plot(r1.out.t, )
+    
+    
