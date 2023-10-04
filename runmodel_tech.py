@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 27 12:01:25 2023
+
+@author: sarah
+"""
+
 #
 # Example of how to run the Python code, and access the output
 # This case is identical to the default setup of CLASS (the version with interface) 
@@ -5,7 +12,7 @@
 
 import copy as cp
 from pylab import *
-from model import *
+from modeltech import *
 
 """ 
 Create empty model_input and set up case
@@ -111,11 +118,6 @@ Init and run the model
 
 # # run1input.wg         = 0.005      # volumetric water content top soil layer [m3 m-3]
 # # run1input.w2         = 0.005      # volumetric water content deeper soil layer [m3 m-3]
-# run1input.ls_type    = 'js'      # land-surface parameterization ('js' for Jarvis-Stewart or 'ags' for A-Gs)
-# run1input.sw_sl      = False     # surface layer switch
-# run1input.z0m        = 0.0      # roughness length for momentum [m]
-# run1input.z0h        = 0.0     # roughness length for scalars [m]
-# run1input.sw_cu = True
 
 run1input.sw_ml      = True      # mixed-layer model switch
 run1input.sw_shearwe = True     # shear growth mixed-layer switch
@@ -126,7 +128,7 @@ run1input.sw_rad     = True     # radiation switch
 run1input.sw_ls      = True     # land surface switch --> makes everything super sensitive to initial theta.
 run1input.sw_cu      = False    # Cumulus parameterization switch
 
-run1input.Ps         = 101000.   # surface pressure [Pa]
+# run1input.Ps         = 101000.   # surface pressure [Pa]
 
 
 run1input.sw_ml      = True      # mixed-layer model switch
@@ -137,15 +139,13 @@ run1input.sw_sl      = True     # surface layer switch
 run1input.sw_rad     = True     # radiation switch
 run1input.sw_ls      = True     # land surface switch --> makes everything super sensitive to initial theta.
 run1input.sw_cu      = False    # Cumulus parameterization switch
-run1input.sw_mc      = False    # Moving column switch
 run1input.sw_tech    = False    # Evaporation technology switch. Part of the land surface module.
 
 run1input.lat        = 40
 run1input.lon        = 0
 run1input.doy        = 106 # mid April
-run1input.tstart     = 7
+run1input.tstart     = 9
 
-import numpy as np
 
 run1input.theta = 290
 run1input.gammatheta = 4e-3 
@@ -153,39 +153,82 @@ run1input.q = 7.5e-3
 run1input.gammaq = -1.25e-6
 run1input.h = 100
 run1input.runtime = 6*3600
-run1input.ls_type = 'ags'
-run1input.c3c4 = 'c4'
+# run1input.ls_type = 'js'
+# run1input.c3c4 = 'c4'
+# run1input.ws_mc = False 
+
+run1input.wg         =  0.171+0.01
+run1input.w2         =  0.171+0.01
 
 r1 = model(run1input)
 r1.run()
 
+# run1input.wsat       = 0.472     # saturated volumetric water content ECMWF config [-]
+# run1input.wfc        = 0.323     # volumetric water content field capacity [-]
+# run1input.wwilt      = 0.171     # volumetric water content wilting point [-]
+
+
 run2input = cp.deepcopy(run1input)
 
-
+run2input.wg         = 0.323
+run2input.w2         = 0.323
 
 r2 = model(run2input)
 r2.run()
+
+
+
+run3input = cp.deepcopy(run1input)
+run3input.sw_tech = True 
+run3input.rstech = 0 
+
+r3 = model(run3input)
+r3.run()
+
+zmountain = 1000
+cp         = 1005.    
+g          = 9.81   
+dT = -(g/cp)*zmountain 
 
 if __name__ == "__main__":
     """
     Plot output
     """
-    fig, ax = plt.subplots(1,2, figsize=(10,10), dpi=300)
+    fig, ax = plt.subplots(4,2, figsize=(10,10), dpi=300)
     # EF = r1.out.LE/(r1.out.LE + r1.out.H)
     # plt.plot(r1.out.t, EF)
     # EF = r2.out.LE/(r2.out.LE + r2.out.H)
     # plt.plot(r1.out.t, EF)
     # plt.ylim(0,1)
     
-    ax[0].plot(r2.out.t, r1.out.h, c='k')
-    ax[0].plot(r2.out.t, r1.out.zlcl, linestyle ='--', c='k')
-    ax[0].plot(r2.out.t, r2.out.h, c='g')
-    ax[0].plot(r2.out.t, r2.out.zlcl, linestyle='--', c='g')
+    ax[0,0].plot(r2.out.t, r1.out.h, c='k')
+    ax[0,0].plot(r2.out.t, r1.out.zlcl, linestyle ='--', c='k')
+    ax[0,0].plot(r2.out.t, r2.out.h, c='g')
+    ax[0,0].plot(r2.out.t, r2.out.zlcl, linestyle='--', c='g')
+    ax[0,0].plot(r2.out.t, r3.out.h, c='r')
+    ax[0,0].plot(r2.out.t, r3.out.zlcl, linestyle='--', c='r')
     
-    ax[1].plot(r2.out.t, r1.out.H, c='k')
-    ax[1].plot(r2.out.t, r1.out.LE, linestyle ='--', c='k')
-    ax[1].plot(r2.out.t, r2.out.H, c='g')
-    ax[1].plot(r2.out.t, r2.out.LE, linestyle ='--', c='g')
+    ax[0,1].scatter(r2.out.t[-1], r1.out.h[-1], c='k')
+    ax[0,1].scatter(r2.out.t[-1], r1.out.zlcl[-1]-zmountain, c='k')
+    ax[0,1].scatter(r2.out.t[-1], r2.out.h[-1], c='g', )
+    ax[0,1].scatter(r2.out.t[-1], r2.out.zlcl[-1]-zmountain, c='g')
+    ax[0,1].scatter(r2.out.t[-1], r3.out.h[-1], c='r', )
+    ax[0,1].scatter(r2.out.t[-1], r3.out.zlcl[-1]-zmountain, c='r')
+    
+    ax[1,0].plot(r2.out.t, r1.out.H, c='k')
+    ax[1,0].plot(r2.out.t, r1.out.LE, linestyle ='--', c='k')
+    ax[1,0].plot(r2.out.t, r2.out.H, c='g')
+    ax[1,0].plot(r2.out.t, r2.out.LE, linestyle ='--', c='g')
+    ax[1,0].plot(r2.out.t, r3.out.H, c='r')
+    ax[1,0].plot(r2.out.t, r3.out.LE, linestyle ='--', c='r')
+    
+    ax[2,0].plot(r2.out.t, r1.out.theta, c='k')
+    ax[2,0].plot(r2.out.t, r2.out.theta, c='g')
+    ax[2,0].plot(r2.out.t, r3.out.theta, c='r')
+    
+    ax[3,0].plot(r2.out.t, r1.out.q*1000, c='k')
+    ax[3,0].plot(r2.out.t, r2.out.q*1000, c='g')
+    ax[3,0].plot(r2.out.t, r3.out.q*1000, c='r')
     
     # figure()
     # subplot(231)

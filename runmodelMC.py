@@ -145,7 +145,14 @@ run1input.sw_ls      = True     # land surface switch --> makes everything super
 run1input.sw_cu      = False    # Cumulus parameterization switch
 # run1input.sw_mc      = False    # Moving column switch
 run1input.sw_tech    = False    # Evaporation technology switch. Part of the land surface module.
+<<<<<<< Updated upstream
 run1input.sw_test = False 
+=======
+<<<<<<< Updated upstream
+=======
+run1input.sw_test = True 
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 run1input.lat        = 40
 run1input.lon        = 0
@@ -175,6 +182,7 @@ r1 = model(run1input)
 r1.run()
 
 
+<<<<<<< Updated upstream
 
 run2input = cp.deepcopy(run1input)
 
@@ -188,6 +196,22 @@ run2input.tech_cutoff = 10e3
 
 
 
+=======
+<<<<<<< Updated upstream
+run2input.sw_mc      = True
+=======
+# run2input.sw_tech    = True
+# run2input.sw_ls      = False  # needs to be false for technology to work.
+# run2input.tech_cov   = 1. 
+# run2input.rstech     = 0. # [s m-1]
+# run2input.alpha      = 0.1
+# run2input.dt         = 60.
+# run2input.tech_cutoff = 10e3
+
+
+
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 
 r2 = model(run2input)
@@ -227,6 +251,17 @@ if __name__ == "__main__":
         return idx
 
     
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+    ax[0,0].plot(r2.out.t, r2.out.LE)
+    ax[0,1].plot(r2.out.t, r2.out.thetasurf)
+    ax[1,0].plot(r2.out.t, r2.out.q*1000)
+    ax[1,1].plot(r2.out.t, r2.out.h)
+    ax[2,0].plot(r2.out.t, r2.out.RH_h)
+    ax[2,1].plot(r2.out.t, r2.out.H)
+=======
+>>>>>>> Stashed changes
     fig, ax = plt.subplots(4,3, figsize=(10,10), dpi=300)
     # ax[0,0].plot(r1.out.t[1:], r1.out.LE[1:])
     # ax[0,1].plot(r1.out.t[2:], r1.out.H[2:])
@@ -283,7 +318,11 @@ if __name__ == "__main__":
         # ax[2,0].plot(r2.out.t, r2.out.RH_h, c=colors[i])
         ax[2,1].plot(r2.out.x[3:]/1000, r2.out.T2m[3:], c=colors[i])
         ax[0,2].plot(r2.out.t, r2.out.Q, c=colors[i])
+<<<<<<< Updated upstream
         ax[1,2].plot(r2.out.x/1000, r2.out.h, c=colors[i], label=np.round(t,2))
+=======
+        ax[1,2].plot(r2.out.x/1000, r2.out.h - r2.out.altitude, c=colors[i], label=np.round(t,2))
+>>>>>>> Stashed changes
         # ax[1,2].plot(r2.out.t-t, r2.out.zlcl, linestyle='--', c='tab:orange')
         ax[2,2].plot(r2.out.x/1000, r2.out.dtheta, c=colors[i])
 
@@ -315,6 +354,10 @@ if __name__ == "__main__":
     # ax[1,2].plot(r3.out.t, r3.out.zlcl, linestyle='--', c='tab:green')
     # ax[2,2].plot(r3.out.t, r3.out.dtheta)
 
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     
     ax[0,0].set_ylabel('LE')
     ax[0,1].set_ylabel('H')
