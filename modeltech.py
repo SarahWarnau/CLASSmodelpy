@@ -104,6 +104,7 @@ class model:
         self.sw_ls      = self.input.sw_ls      # land surface switch
         self.ls_type    = self.input.ls_type    # land surface paramaterization (js or ags)
         self.sw_cu      = self.input.sw_cu      # cumulus parameterization switch
+        self.sw_tech    = self.input.sw_tech
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -286,6 +287,9 @@ class model:
 
         # initialize A-Gs surface scheme
         self.c3c4       = self.input.c3c4       # plant type ('c3' or 'c4')
+        
+        # technology
+        self.rstech     = self.input.rstech
  
         # initialize cumulus parameterization
         self.sw_cu      = self.input.sw_cu      # Cumulus parameterization switch
@@ -342,6 +346,9 @@ class model:
         # run land surface model
         if(self.sw_ls):
             self.run_land_surface()
+            
+        if(self.sw_tech):
+            self.run_technology()
  
         # run cumulus parameterization
         if(self.sw_cu):
@@ -401,6 +408,45 @@ class model:
             print("LCL calculation not converged!!")
             print("RHlcl = %f, zlcl=%f"%(RHlcl, self.lcl))
             print("\a")
+            
+    def run_technology(self):
+        # compute ra
+        ueff = np.sqrt(self.u ** 2. + self.v ** 2. + self.wstar**2.)
+
+        if(self.sw_sl):
+          self.ra = (self.Cs * ueff)**-1.
+        else:
+          self.ra = ueff / max(1.e-3, self.ustar)**2.
+
+        # first calculate essential thermodynamic variables
+        self.esat    = esat(self.theta)
+        self.qsat    = qsat(self.theta, self.Ps)
+        desatdT      = self.esat * (17.2694 / (self.theta - 35.86) - 17.2694 * \
+                                    (self.theta - 273.16) / (self.theta - 35.86)**2.)
+        self.dqsatdT = 0.622 * desatdT / self.Ps
+        self.e       = self.q * self.Ps / 0.622
+     
+        # calculate skin temperature implictly
+        self.Ts = (self.Q*(self.ra + self.rstech)/(self.rho*self.Lv) - self.qsat + self.q) / \
+            ((self.cp*(self.ra + self.rstech)/(self.Lv*self.ra)) + self.dqsatdT) \
+                + self.theta
+        # esatsurf      = esat(self.Ts)
+        self.qsatsurf = qsat(self.Ts, self.Ps)
+        self.LEtech   = self.rho * self.Lv / (self.ra + self.rstech) * \
+            (self.dqsatdT * (self.Ts - self.theta) + self.qsat - self.q)
+  
+        self.LE     = self.LEtech #self.LEsoil + self.LEveg + self.LEliq
+        self.H      = self.rho * self.cp / self.ra * (self.Ts - self.theta)
+        self.G      = 0
+        self.LEpot  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / \
+                       self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv)
+        # self.LEref  = (self.dqsatdT * (self.Q - self.G) + self.rho * self.cp / self.ra * (self.qsat - self.q)) / (self.dqsatdT + self.cp / self.Lv * (1. + self.rsmin / self.LAI / self.ra))
+  
+        # calculate kinematic heat fluxes
+        self.wtheta   = self.H  / (self.rho * self.cp)
+        self.wq       = self.LE / (self.rho * self.Lv)
+
+         
 
     def run_cumulus(self):
         # Calculate mixed-layer top relative humidity variance (Neggers et. al 2006/7)
@@ -1060,6 +1106,12 @@ class model:
         del(self.sw_sl)
         del(self.sw_wind)
         del(self.sw_shearwe)
+        del(self.sw_tech)
+        
+        # evaporation technology
+        # del(self.tech_cov)
+        del(self.rstech)
+        # del(self.tech_cutoff)
 
 # class for storing mixed-layer model output data
 class model_output:
@@ -1269,3 +1321,9 @@ class model_input:
         # Cumulus parameters
         self.sw_cu      = None  # Cumulus parameterization switch
         self.dz_h       = None  # Transition layer thickness [m]
+        
+        # evaporation technology
+        # self.tech_cov   = None
+        self.rstech     = None # Surface resistance of the technology
+        self.sw_tech    = None
+        # self.tech_cutoff = None

@@ -335,8 +335,7 @@ class model:
             self.run_radiation()
  
         if(self.sw_sl):
-            for i in range(10): 
-                self.run_surface_layer()
+           self.run_surface_layer()
   
         if(self.sw_ls):
             self.run_land_surface()
@@ -437,6 +436,11 @@ class model:
         
         self.dx         = self.U*self.dt    # Location tendency [m]
         self.x          = self.x + self.dx  # Location [m]
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
         
         self.U          = self.input.U - (3.1/55000)*self.x  # Velocity of the moving column in x direction [m/s]
         
@@ -447,12 +451,26 @@ class model:
         # self.daltitude =  0.039 *np.cos(0.00003 *self.x)*self.U 
         # self.altitude   = self.altitude + self.daltitude
         altitude_old = self.altitude
+<<<<<<< Updated upstream
         self.altitude = 1300*np.sin(0.03*self.x/1000)
         self.daltitude = self.altitude - altitude_old 
+=======
+        
+        self.altitude = 1300*np.sin(0.03*self.x/1000)
+
+        self.daltitude = (self.altitude - altitude_old)
+
+        # self.altitude = self.altitude + self.daltitude*self.dt 
+        
+>>>>>>> Stashed changes
         
         
         self.dPs        = -self.rho*self.g*self.daltitude    # Pressure tendency [m] self.P_h    = self.Ps - self.rho * self.g * self.h # hydrostatic balance
     
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         self.Ps         = self.Ps + self.dPs 
         
         # self.Ps         = self.P0 -self.rho*self.g*self.altitude 
@@ -559,9 +577,20 @@ class model:
       
         # calculate large-scale vertical velocity (subsidence)
         self.ws = -self.divU * self.h
+<<<<<<< Updated upstream
         
         if(self.sw_mc and not self.sw_test):
             self.ws = -self.daltitude/self.dt
+=======
+<<<<<<< Updated upstream
+=======
+        # if(self.sw_mc):
+            # self.ws = -self.divU * self.h 
+        
+        # if(self.sw_mc and not self.sw_test):
+        #     self.ws = -self.daltitude/self.dt
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
       
         # calculate compensation to fix the free troposphere in case of subsidence 
         if(self.sw_fixft):
@@ -590,9 +619,18 @@ class model:
             self.we    = (-self.wthetave + 5. * self.ustar ** 3. * self.thetav / (self.g * self.h)) / self.dthetav
         else:
             self.we    = -self.wthetave / self.dthetav
+<<<<<<< Updated upstream
             
         if(self.sw_mc and not self.sw_test):
             self.we += self.daltitude/self.dt
+=======
+<<<<<<< Updated upstream
+=======
+            
+        if(self.sw_mc):# and not self.sw_test):
+            self.we += self.daltitude/self.dt
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
         # Don't allow boundary layer shrinking if wtheta < 0 
         if(self.we < 0):
@@ -606,8 +644,19 @@ class model:
         self.htend       = self.we + self.ws + self.wf - self.M
        
         self.thetatend   = (self.wtheta - self.wthetae             ) / self.h + self.advtheta 
+<<<<<<< Updated upstream
         # if(self.sw_mc):
         #     self.thetatend   = (self.wtheta - self.wthetae             ) / (self.h + self.advtheta 
+=======
+<<<<<<< Updated upstream
+=======
+        if(self.sw_mc):
+            self.thetatend   = (self.wtheta - self.wthetae             ) / self.h + self.advtheta - (self.theta/self.h)*(self.daltitude/self.dt)*(1 + (1/self.h))
+        
+        # if(self.sw_mc):
+        #     self.thetatend   = (self.wtheta - self.wthetae             ) / (self.h + self.advtheta 
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
         self.qtend       = (self.wq     - self.wqe     - self.wqM  ) / self.h + self.advq
         self.CO2tend     = (self.wCO2   - self.wCO2e   - self.wCO2M) / self.h + self.advCO2
         
@@ -1481,6 +1530,8 @@ class model_input:
         self.altitude   = None  # Altitude (above starting point) [m]
         self.Tsurf      = None  # Surface temperature [K]
         self.Tair_s     = None  # Air temperature at the surface [K]
+        self.slope      = None
+        self.U          = None 
         
         # evaporation technology
         # self.tech_cov   = None
