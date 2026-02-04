@@ -24,6 +24,7 @@
 
 import copy as cp
 import numpy as np
+import xarray as xr
 import sys
 #import ribtol
 
@@ -94,6 +95,7 @@ class model:
         self.E0         =  53.3e3;              # activation energy [53.3 kJ kmol-1]
 
         # Read switches
+        self.sw_ap      = self.input.sw_ap      # atmospheric profile switch
         self.sw_ml      = self.input.sw_ml      # mixed-layer model switch
         self.sw_shearwe = self.input.sw_shearwe # shear growth ABL switch
         self.sw_fixft   = self.input.sw_fixft   # Fix the free-troposphere switch
@@ -103,6 +105,9 @@ class model:
         self.sw_ls      = self.input.sw_ls      # land surface switch
         self.ls_type    = self.input.ls_type    # land surface paramaterization (js or ags)
         self.sw_cu      = self.input.sw_cu      # cumulus parameterization switch
+        
+        # atmospheric profile
+        self.ap = self.input.ap
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -300,6 +305,14 @@ class model:
             self.c_beta = 0                     # Zero curvature; linear response
         assert(self.c_beta >= 0 or self.c_beta <= 1)
 
+        if(self.sw_ap):
+            self.get_profile_dini()
+            self.get_profile_gamma()
+            self.out_NetCDF = xr.Dataset(data_vars = {'theta':(('time', 'z'), np.zeros((self.tsteps, len(self.ap))))},
+                                         coords = {'time':np.arange(self.tstart,self.tsteps*self.dt,self.dt),
+                                                   'z':self.ap['z'].values})
+            self.store_NetCDF()
+
         # initialize output
         self.out = model_output(self.tsteps)
  
@@ -322,6 +335,23 @@ class model:
         
         if(self.sw_ml):
             self.run_mixed_layer()
+
+    def get_profile_dini(self):
+        h_idx = np.abs(self.ap['z'] - self.h).argmin() 
+        if 'theta' in self.ap.columns:
+            self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
+
+    def get_profile_gamma(self):
+        h_idx = np.abs(self.ap['z'] - self.h).argmin() 
+        if 'theta' in self.ap.columns:
+            # self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
+            self.gammatheta = (self.ap['theta'][h_idx+2] - self.ap['theta'][h_idx+1])/ \
+                (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
+            
+    def update_profile(self):
+        h_idx = np.abs(self.ap['z'] - self.h).argmin()
+        if 'theta' in self.ap.columns:
+            self.ap.loc[:h_idx, 'theta'] = self.theta
 
     def timestep(self):
         self.statistics()
@@ -356,6 +386,11 @@ class model:
         # time integrate mixed-layer model
         if(self.sw_ml):
             self.integrate_mixed_layer()
+            
+        if(self.sw_ap):
+            self.update_profile()
+            self.store_NetCDF()
+            self.get_profile_gamma()            
   
     def statistics(self):
         # Calculate virtual temperatures 
@@ -809,6 +844,10 @@ class model:
         self.Wl       = Wl0     + self.dt * self.Wltend
   
     # store model output
+    def store_NetCDF(self):
+        t                      = self.t
+        self.out_NetCDF['theta'][t,:] = self.ap['theta']
+    
     def store(self):
         t                      = self.t
         self.out.t[t]          = t * self.dt / 3600. + self.tstart
@@ -905,6 +944,8 @@ class model:
         del(self.t)
         del(self.dt)
         del(self.tsteps)
+        
+        del(self.ap)
          
         del(self.h)          
         del(self.Ps)        
@@ -1138,6 +1179,8 @@ class model_input:
         self.dt         = None  # time step [s]
 
         # mixed-layer variables
+        self.sw_ap      = None
+        self.ap         = None
         self.sw_ml      = None  # mixed-layer model switch
         self.sw_shearwe = None  # Shear growth ABL switch
         self.sw_fixft   = None  # Fix the free-troposphere switch
