@@ -16,7 +16,7 @@ z = np.arange(0, 2000, 20)
 df = pd.DataFrame({'z':z,
                    'theta':300+z*6e-3,
                    'q':12e-3-z*1e-6,
-                   'u':4 + z*1e-1,
+                   'u':4 + z*1e-2,
                    'v':z*0})
 # df.loc[:10, 'theta'] = 288
 
@@ -136,5 +136,13 @@ Plot output
 fig, axs = plt.subplots(2,2)
 ax = axs.flatten()
 for i, var in enumerate(['theta', 'q', 'u', 'v']):
-    ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, r1.out_NetCDF[var].T, levels=20)
+    mpt = 1
+    if var == 'q':
+        mpt = 1000
+    img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
+                         r1.out_NetCDF[var].T*mpt, levels=20)
+    plt.colorbar(img)
+    ax[i].set_title(var)
+
+fig.tight_layout()
 # plt.ylim(0,len(df))
