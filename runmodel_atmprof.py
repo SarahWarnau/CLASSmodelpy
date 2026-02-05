@@ -29,13 +29,16 @@ run1input.dt         = 60.       # time step [s]
 run1input.runtime    = 12*3600    # total run time [s]
 
 # atmospheric profile input
+# When active, the provided dataframe will be used to calculate the initial, gradient, 
+# and jump values of the variables present. 
+# The dataframe should contain a column labeled 'z' and optionally 'theta', 'q', 'u', 'v'.
 run1input.sw_ap      = True      # atmospheric profile switch
 run1input.ap = df
 
 # mixed-layer input
 run1input.sw_ml      = True      # mixed-layer model switch
 run1input.sw_shearwe = False     # shear growth mixed-layer switch
-run1input.sw_fixft   = True     # Fix the free-troposphere switch
+run1input.sw_fixft   = True      # Fix the free-troposphere switch
 run1input.h          = 200.      # initial ABL height [m]
 run1input.Ps         = 101300.   # surface pressure [Pa]
 run1input.divU       = 0.        # horizontal large-scale divergence of wind [s-1]
