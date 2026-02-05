@@ -14,8 +14,11 @@ Get pandas dataframe with atmosheric profiles on z levels
 """
 z = np.arange(0, 2000, 20)
 df = pd.DataFrame({'z':z,
-                   'theta':300+z*6e-3})
-df.loc[:10, 'theta'] = 301
+                   'theta':300+z*6e-3,
+                   'q':12e-3-z*1e-6,
+                   'u':4 + z*1e-1,
+                   'v':z*0})
+# df.loc[:10, 'theta'] = 288
 
 """ 
 Create empty model_input and set up case
@@ -128,6 +131,10 @@ r1.run()
 """
 Plot output
 """
+
 # plt.plot(r1.out.h)
-plt.imshow(r1.out_NetCDF['theta'].T)
-plt.ylim(0,len(df))
+fig, axs = plt.subplots(2,2)
+ax = axs.flatten()
+for i, var in enumerate(['theta', 'q', 'u', 'v']):
+    ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, r1.out_NetCDF[var].T, levels=20)
+# plt.ylim(0,len(df))

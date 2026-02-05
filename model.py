@@ -313,11 +313,24 @@ class model:
             # Make sure initial mixed layer is mixed
             if 'theta' in self.ap.columns:
                 self.theta = np.mean(self.ap.loc[:h_idx, 'theta'])
+            if 'q' in self.ap.columns:
+                self.q = np.mean(self.ap.loc[:h_idx, 'q'])
+            if 'u' in self.ap.columns:
+                self.u = np.mean(self.ap.loc[:h_idx, 'u'])
+            if 'v' in self.ap.columns:
+                self.v = np.mean(self.ap.loc[:h_idx, 'v'])
             
             self.update_profile()
             self.get_profile_dini()
             self.get_profile_gamma()
-            self.out_NetCDF = xr.Dataset(data_vars = {'theta':(('time', 'z'), np.zeros((self.tsteps, len(self.ap))))},
+
+            # prepare NetCDF output variables dynamically based on available profile columns
+            data_vars = {}
+            for col in ['theta', 'q', 'u', 'v']:
+                if col in self.ap.columns:
+                    data_vars[col] = (("time", "z"), np.zeros((self.tsteps, len(self.ap))))
+
+            self.out_NetCDF = xr.Dataset(data_vars = data_vars,
                                          coords = {'time':np.arange(self.tstart,self.tsteps*self.dt,self.dt),
                                                    'z':self.ap['z'].values})
             self.store_NetCDF()
@@ -349,6 +362,12 @@ class model:
         h_idx = np.abs(self.ap['z'] - self.h).argmin() 
         if 'theta' in self.ap.columns:
             self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
+        if 'q' in self.ap.columns:
+            self.dq = self.ap['q'][h_idx+1] - self.ap['q'][h_idx-1]
+        if 'u' in self.ap.columns:
+            self.du = self.ap['u'][h_idx+1] - self.ap['u'][h_idx-1]
+        if 'v' in self.ap.columns:
+            self.dv = self.ap['v'][h_idx+1] - self.ap['v'][h_idx-1]
 
     def get_profile_gamma(self):
         h_idx = np.abs(self.ap['z'] - self.h).argmin() 
@@ -356,11 +375,27 @@ class model:
             # self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
             self.gammatheta = (self.ap['theta'][h_idx+2] - self.ap['theta'][h_idx+1])/ \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
+        if 'q' in self.ap.columns:
+            self.gammaq = (self.ap['q'][h_idx+2] - self.ap['q'][h_idx+1]) / \
+                (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
+        if 'u' in self.ap.columns:
+            self.gammau = (self.ap['u'][h_idx+2] - self.ap['u'][h_idx+1]) / \
+                (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
+        if 'v' in self.ap.columns:
+            self.gammav = (self.ap['v'][h_idx+2] - self.ap['v'][h_idx+1]) / \
+                (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
     
     def update_profile(self):
         h_idx = np.abs(self.ap['z'] - self.h).argmin()
+        # update profile columns inside the mixed layer to current mixed-layer values
         if 'theta' in self.ap.columns:
             self.ap.loc[:h_idx, 'theta'] = self.theta
+        if 'q' in self.ap.columns:
+            self.ap.loc[:h_idx, 'q'] = self.q
+        if 'u' in self.ap.columns:
+            self.ap.loc[:h_idx, 'u'] = self.u
+        if 'v' in self.ap.columns:
+            self.ap.loc[:h_idx, 'v'] = self.v
 
     def timestep(self):
         self.statistics()
@@ -855,7 +890,10 @@ class model:
     # store model output
     def store_NetCDF(self):
         t                      = self.t
-        self.out_NetCDF['theta'][t,:] = self.ap['theta']
+        # store available profile columns to NetCDF output
+        for col in ['theta', 'q', 'u', 'v']:
+            if col in self.ap.columns and col in self.out_NetCDF.data_vars:
+                self.out_NetCDF[col][t,:] = self.ap[col]
     
     def store(self):
         t                      = self.t
