@@ -331,7 +331,7 @@ class model:
                     data_vars[col] = (("time", "z"), np.zeros((self.tsteps, len(self.ap))))
 
             self.out_NetCDF = xr.Dataset(data_vars = data_vars,
-                                         coords = {'time':np.arange(self.tstart,self.tsteps*self.dt,self.dt),
+                                         coords = {'time':np.linspace(self.tstart,self.input.runtime+self.tstart,self.tsteps),
                                                    'z':self.ap['z'].values})
             self.store_NetCDF()
 
@@ -375,6 +375,9 @@ class model:
             # self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
             self.gammatheta = (self.ap['theta'][h_idx+2] - self.ap['theta'][h_idx+1])/ \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
+            # Prevent overshoot growth through residual layer for larger dt.
+            if self.gammatheta < 1.e-3:
+                self.gammatheta = 1.e-3
         if 'q' in self.ap.columns:
             self.gammaq = (self.ap['q'][h_idx+2] - self.ap['q'][h_idx+1]) / \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
