@@ -304,8 +304,17 @@ class model:
         if (self.c_beta is None): 
             self.c_beta = 0                     # Zero curvature; linear response
         assert(self.c_beta >= 0 or self.c_beta <= 1)
+        if(self.sw_ap):
+            if 'z' not in self.ap.columns:
+                print("The provided atmospheric profile has no column labeled 'z'!")
 
         if(self.sw_ap):
+            h_idx = np.abs(self.ap['z'] - self.h).argmin()
+            # Make sure initial mixed layer is mixed
+            if 'theta' in self.ap.columns:
+                self.theta = np.mean(self.ap.loc[:h_idx, 'theta'])
+            
+            self.update_profile()
             self.get_profile_dini()
             self.get_profile_gamma()
             self.out_NetCDF = xr.Dataset(data_vars = {'theta':(('time', 'z'), np.zeros((self.tsteps, len(self.ap))))},
@@ -347,7 +356,7 @@ class model:
             # self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
             self.gammatheta = (self.ap['theta'][h_idx+2] - self.ap['theta'][h_idx+1])/ \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
-            
+    
     def update_profile(self):
         h_idx = np.abs(self.ap['z'] - self.h).argmin()
         if 'theta' in self.ap.columns:
