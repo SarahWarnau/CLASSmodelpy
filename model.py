@@ -908,12 +908,14 @@ class model:
         self.out.wthetav[t]    = self.wthetav
         self.out.wthetae[t]    = self.wthetae
         self.out.wthetave[t]   = self.wthetave
+        self.out.gammatheta[t] = self.gammatheta
         
         self.out.q[t]          = self.q
         self.out.dq[t]         = self.dq
         self.out.wq[t]         = self.wq
         self.out.wqe[t]        = self.wqe
         self.out.wqM[t]        = self.wqM
+        self.out.gammaq[t]     = self.gammaq
       
         self.out.qsat[t]       = self.qsat
         self.out.e[t]          = self.e
@@ -930,10 +932,12 @@ class model:
         self.out.u[t]          = self.u
         self.out.du[t]         = self.du
         self.out.uw[t]         = self.uw
+        self.out.gammau[t]     = self.gammau
         
         self.out.v[t]          = self.v
         self.out.dv[t]         = self.dv
         self.out.vw[t]         = self.vw
+        self.out.gammav[t]     = self.gammav
         
         self.out.T2m[t]        = self.T2m
         self.out.q2m[t]        = self.q2m
@@ -1143,12 +1147,14 @@ class model_output:
         self.wthetav    = np.zeros(tsteps)    # surface kinematic virtual heat flux [K m s-1]
         self.wthetae    = np.zeros(tsteps)    # entrainment kinematic heat flux [K m s-1]
         self.wthetave   = np.zeros(tsteps)    # entrainment kinematic virtual heat flux [K m s-1]
+        self.gammatheta = np.zeros(tsteps)    # free atmosphere theta slope [K m-1]
         
         self.q          = np.zeros(tsteps)    # mixed-layer specific humidity [kg kg-1]
         self.dq         = np.zeros(tsteps)    # initial specific humidity jump at h [kg kg-1]
         self.wq         = np.zeros(tsteps)    # surface kinematic moisture flux [kg kg-1 m s-1]
         self.wqe        = np.zeros(tsteps)    # entrainment kinematic moisture flux [kg kg-1 m s-1]
         self.wqM        = np.zeros(tsteps)    # cumulus mass-flux kinematic moisture flux [kg kg-1 m s-1]
+        self.gammaq     = np.zeros(tsteps)    # free atmosphere q slope [kg kg-1 m-1]
 
         self.qsat       = np.zeros(tsteps)    # mixed-layer saturated specific humidity [kg kg-1]
         self.e          = np.zeros(tsteps)    # mixed-layer vapor pressure [Pa]
@@ -1165,10 +1171,12 @@ class model_output:
         self.u          = np.zeros(tsteps)    # initial mixed-layer u-wind speed [m s-1]
         self.du         = np.zeros(tsteps)    # initial u-wind jump at h [m s-1]
         self.uw         = np.zeros(tsteps)    # surface momentum flux u [m2 s-2]
+        self.gammau     = np.zeros(tsteps)    # free atmosphere u slope [m s-1 m-1]
         
         self.v          = np.zeros(tsteps)    # initial mixed-layer u-wind speed [m s-1]
         self.dv         = np.zeros(tsteps)    # initial u-wind jump at h [m s-1]
         self.vw         = np.zeros(tsteps)    # surface momentum flux v [m2 s-2]
+        self.gammav     = np.zeros(tsteps)    # free atmosphere v slope [m s-1 m-1]
 
         # diagnostic meteorological variables
         self.T2m        = np.zeros(tsteps)    # 2m temperature [K]   
