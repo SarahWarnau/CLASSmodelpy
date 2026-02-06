@@ -321,7 +321,7 @@ class model:
                 self.v = np.mean(self.ap.loc[:h_idx, 'v'])
             
             self.update_profile()
-            self.get_profile_dini()
+            self.get_profile_jump()
             self.get_profile_gamma()
 
             # prepare NetCDF output variables dynamically based on available profile columns
@@ -358,7 +358,7 @@ class model:
         if(self.sw_ml):
             self.run_mixed_layer()
 
-    def get_profile_dini(self):
+    def get_profile_jump(self):
         h_idx = np.abs(self.ap['z'] - self.h).argmin() 
         if 'theta' in self.ap.columns:
             self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
@@ -372,12 +372,8 @@ class model:
     def get_profile_gamma(self):
         h_idx = np.abs(self.ap['z'] - self.h).argmin() 
         if 'theta' in self.ap.columns:
-            # self.dtheta = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
             self.gammatheta = (self.ap['theta'][h_idx+2] - self.ap['theta'][h_idx+1])/ \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
-            # Prevent overshoot growth through residual layer for larger dt.
-            if self.gammatheta < 1.e-3:
-                self.gammatheta = 1.e-3
         if 'q' in self.ap.columns:
             self.gammaq = (self.ap['q'][h_idx+2] - self.ap['q'][h_idx+1]) / \
                 (self.ap['z'][h_idx+2]-self.ap['z'][h_idx+1])
@@ -399,6 +395,21 @@ class model:
             self.ap.loc[:h_idx, 'u'] = self.u
         if 'v' in self.ap.columns:
             self.ap.loc[:h_idx, 'v'] = self.v
+            
+    # def jump_consistency_check(self):
+    #     h_idx = np.abs(self.ap['z'] - self.h).argmin() 
+    #     if 'theta' in self.ap.columns:
+    #         dtheta_ap = self.ap['theta'][h_idx+1] - self.ap['theta'][h_idx-1]
+    #         print(f"dtheta model {self.dtheta}, profile {dtheta_ap}")
+    #     if 'q' in self.ap.columns:
+    #         dq_ap = self.ap['q'][h_idx+1] - self.ap['q'][h_idx-1]
+    #         print(f"dq model {self.dq}, profile {dq_ap}")
+    #     if 'u' in self.ap.columns:
+    #         du_ap = self.ap['u'][h_idx+1] - self.ap['u'][h_idx-1]
+    #         print(f"du model {self.du}, profile {du_ap}")
+    #     if 'v' in self.ap.columns:
+    #         dv_ap = self.ap['v'][h_idx+1] - self.ap['v'][h_idx-1]
+    #         print(f"dv model {self.dv}, profile {dv_ap}")
 
     def timestep(self):
         self.statistics()
@@ -437,7 +448,8 @@ class model:
         if(self.sw_ap):
             self.update_profile()
             self.store_NetCDF()
-            self.get_profile_gamma()            
+            self.get_profile_gamma()
+            self.get_profile_jump() # Needs to be updated to be consistent with profile
   
     def statistics(self):
         # Calculate virtual temperatures 
@@ -473,6 +485,8 @@ class model:
         if(it == itmax):
             print("LCL calculation not converged!!")
             print("RHlcl = %f, zlcl=%f"%(RHlcl, self.lcl))
+            
+        # self.jump_consistency_check()
 
     def run_cumulus(self):
         # Calculate mixed-layer top relative humidity variance (Neggers et. al 2006/7)
