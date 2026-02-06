@@ -108,6 +108,11 @@ class model:
         
         # atmospheric profile
         self.ap = self.input.ap
+        
+        # spraying setup
+        self.tspray     = self.input.tspray     # time of spraying [s]
+        self.zspray     = self.input.zspray     # height of spraying [m]
+        self.tspray_idx = np.abs(np.arange(0, self.input.runtime, self.input.dt) - self.tspray).argmin()
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -410,6 +415,32 @@ class model:
     #     if 'v' in self.ap.columns:
     #         dv_ap = self.ap['v'][h_idx+1] - self.ap['v'][h_idx-1]
     #         print(f"dv model {self.dv}, profile {dv_ap}")
+            
+    def run_spray_evaporator(self):
+        """
+        Spray evaporation from given spray height calculated from wet bulb temperature
+        at that height. The whole layer is assumed to obtain these values, to prevent
+        oversaturation in the mixed layer.
+        """
+        zspray_idx = np.abs(self.ap['z'] - self.zspray).argmin()
+        theta_sprayed_layer_ini = self.ap['theta'][zspray_idx].item()
+        q_sprayed_layer_ini = self.ap['q'][zspray_idx].item()
+        h_new = self.ap['z'][zspray_idx].item()
+        p_sprayed_layer = self.Ps - self.rho*self.g*h_new
+        
+        from spray_module import SprayModule as Spray
+        spray = Spray(theta0=theta_sprayed_layer_ini, q0=q_sprayed_layer_ini, p=p_sprayed_layer)
+        theta_new = spray.theta_sprayed
+        q_new = spray.q_sprayed
+        
+        self.theta = theta_new
+        self.q = q_new
+        self.h=h_new
+        
+        # for the new ABL, get new values
+        self.update_profile()
+        self.get_profile_jump()
+        self.get_profile_gamma()
 
     def timestep(self):
         self.statistics()
@@ -433,6 +464,10 @@ class model:
         # run mixed-layer model
         if(self.sw_ml):
             self.run_mixed_layer()
+            
+        # run spray model
+        if(self.t == self.tspray_idx):
+            self.run_spray_evaporator()
  
         # store output before time integration
         self.store()
@@ -1014,6 +1049,10 @@ class model:
         del(self.tsteps)
         
         del(self.ap)
+
+        del(self.tspray)
+        del(self.zspray)
+        del(self.tspray_idx)        
          
         del(self.h)          
         del(self.Ps)        
@@ -1253,6 +1292,11 @@ class model_input:
         # mixed-layer variables
         self.sw_ap      = None
         self.ap         = None
+        
+        self.tspray     = None
+        self.zspray     = None
+        self.tspray_idx = None
+        
         self.sw_ml      = None  # mixed-layer model switch
         self.sw_shearwe = None  # Shear growth ABL switch
         self.sw_fixft   = None  # Fix the free-troposphere switch

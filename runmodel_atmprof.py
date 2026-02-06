@@ -12,12 +12,13 @@ import pandas as pd
 """
 Get pandas dataframe with atmosheric profiles on z levels
 """
-z = np.arange(0, 2000, 20)
+z = np.arange(0, 2000, 0.1, dtype=np.float64())
 df = pd.DataFrame({'z':z,
                    'theta':300+z*6e-3,
                    'q':12e-3-z*1e-6,
                    'u':4 + z*1e-2,
-                   'v':z*0})
+                   'v':z*0}
+                  )
 # df.loc[:10, 'theta'] = 288
 
 """ 
@@ -26,7 +27,7 @@ Create empty model_input and set up case
 run1input = model_input()
 
 run1input.dt         = 60.       # time step [s]
-run1input.runtime    = 12*3600    # total run time [s]
+run1input.runtime    = 6*3600    # total run time [s]
 
 # atmospheric profile input
 # When active, the provided dataframe will be used to calculate the initial, gradient, 
@@ -35,9 +36,12 @@ run1input.runtime    = 12*3600    # total run time [s]
 run1input.sw_ap      = True      # atmospheric profile switch
 run1input.ap = df
 
+run1input.tspray     = 3600      # time of spraying [s]
+run1input.zspray     = 100       # height of spraying [m]
+
 # mixed-layer input
 run1input.sw_ml      = True      # mixed-layer model switch
-run1input.sw_shearwe = False     # shear growth mixed-layer switch
+run1input.sw_shearwe = True     # shear growth mixed-layer switch
 run1input.sw_fixft   = True      # Fix the free-troposphere switch
 run1input.h          = 200.      # initial ABL height [m]
 run1input.Ps         = 101300.   # surface pressure [Pa]
@@ -63,7 +67,7 @@ run1input.gammaCO2   = 0.        # free atmosphere CO2 lapse rate [ppm m-1]
 run1input.advCO2     = 0.        # advection of CO2 [ppm s-1]
 run1input.wCO2       = 0.        # surface kinematic CO2 flux [ppm m s-1]
 
-run1input.sw_wind    = False     # prognostic wind switch
+run1input.sw_wind    = True     # prognostic wind switch
 run1input.u          = 6.        # initial mixed-layer u-wind speed [m s-1]
 run1input.du         = 4.        # initial u-wind jump at h [m s-1]
 run1input.gammau     = 0.        # free atmosphere u-wind speed lapse rate [s-1]
@@ -148,4 +152,17 @@ for i, var in enumerate(['theta', 'q', 'u', 'v']):
     ax[i].set_title(var)
 
 fig.tight_layout()
+plt.show()
 # plt.ylim(0,len(df))
+
+fig, axs = plt.subplots(2,3)
+ax = axs.flatten()
+for i, var in enumerate(['theta', 'gammatheta', 'dthetav','q',  'gammaq', 'dq']):
+    mpt = 1
+    if 'q' in var:
+        mpt = 1000
+    img = ax[i].plot(r1.out.__dict__[var]*mpt)
+    ax[i].set_title(var)
+    
+fig.tight_layout()
+plt.show()
