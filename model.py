@@ -1225,6 +1225,7 @@ class model:
         del(self.sw_sl)
         del(self.sw_wind)
         del(self.sw_shearwe)
+        del(self.sw_ap)
         del(self.sw_ss)
 
 # class for storing mixed-layer model output data
