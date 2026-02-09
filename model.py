@@ -34,7 +34,7 @@ def esat(T):
 def qsat(T,p):
     return 0.622 * esat(T) / p
 
-class SurfaceError(Exception):
+class CLASSSetupError(Exception):
     pass
 
 class model:
@@ -105,6 +105,7 @@ class model:
         self.sw_wind    = self.input.sw_wind    # prognostic wind switch
         self.sw_sl      = self.input.sw_sl      # surface layer switch
         self.sw_rad     = self.input.sw_rad     # radiation switch
+        self.sw_ss      = self.input.sw_ss      # sea surface switch
         self.sw_ls      = self.input.sw_ls      # land surface switch
         self.ls_type    = self.input.ls_type    # land surface paramaterization (js or ags)
         self.sw_cu      = self.input.sw_cu      # cumulus parameterization switch
@@ -243,7 +244,6 @@ class model:
         self.dFz        = self.input.dFz        # cloud top radiative divergence [W m-2] 
   
         # initialize sea surface
-        self.sw_ss      = self.input.sw_ss      # sea surface switch
         self.SST        = self.input.SST        # sea surface temperature [K]  
   
         # initialize land surface
@@ -318,9 +318,9 @@ class model:
         assert(self.c_beta >= 0 or self.c_beta <= 1)
         if(self.sw_ap):
             if 'z' not in self.ap.columns:
-                print("The provided atmospheric profile has no column labeled 'z'!")
+                raise CLASSSetupError("The provided atmospheric profile has no column labeled 'z'!")
         if(self.sw_ss & self.sw_ls):
-            raise SurfaceError("Both land and sea surfaces are active, choose one!")
+            raise CLASSSetupError("Both land and sea surfaces are active, choose one!")
 
         if(self.sw_ap):
             h_idx = np.abs(self.ap['z'] - self.h).argmin()
@@ -974,8 +974,7 @@ class model:
         self.wq       = self.LE / (self.rho * self.Lv)
         
         self.thetasurf = self.Ts*((1e5/self.Ps)**(self.Rd/self.cp))
-        
-  
+          
     # store model output
     def store_NetCDF(self):
         t                      = self.t
