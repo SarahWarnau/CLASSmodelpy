@@ -499,6 +499,10 @@ class model:
         if(self.sw_sl):
             self.run_surface_layer()
         
+        # run sea surface model
+        if(self.sw_ss):
+            self.run_sea_surface()
+        
         # run land surface model
         if(self.sw_ls):
             self.run_land_surface()
