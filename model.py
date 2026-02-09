@@ -34,6 +34,9 @@ def esat(T):
 def qsat(T,p):
     return 0.622 * esat(T) / p
 
+class SurfaceError(Exception):
+    pass
+
 class model:
     def __init__(self, model_input):
         # initialize the different components of the model
@@ -239,6 +242,10 @@ class model:
         self.Q          = self.input.Q          # net radiation [W m-2]
         self.dFz        = self.input.dFz        # cloud top radiative divergence [W m-2] 
   
+        # initialize sea surface
+        self.sw_ss      = self.input.sw_ss      # sea surface switch
+        self.SST        = self.input.SST        # sea surface temperature [K]  
+  
         # initialize land surface
         self.wg         = self.input.wg         # volumetric water content top soil layer [m3 m-3]
         self.w2         = self.input.w2         # volumetric water content deeper soil layer [m3 m-3]
@@ -312,6 +319,8 @@ class model:
         if(self.sw_ap):
             if 'z' not in self.ap.columns:
                 print("The provided atmospheric profile has no column labeled 'z'!")
+        if(self.sw_ss & self.sw_ls):
+            raise SurfaceError("Both land and sea surfaces are active, choose one!")
 
         if(self.sw_ap):
             h_idx = np.abs(self.ap['z'] - self.h).argmin()
@@ -355,6 +364,10 @@ class model:
   
         if(self.sw_ls):
             self.run_land_surface()
+            
+        # run sea surface model
+        if(self.sw_ss):
+            self.run_sea_surface()
 
         if(self.sw_cu):
             self.run_mixed_layer()
@@ -938,6 +951,30 @@ class model:
         self.Tsoil    = Tsoil0  + self.dt * self.Tsoiltend
         self.wg       = wg0     + self.dt * self.wgtend
         self.Wl       = Wl0     + self.dt * self.Wltend
+        
+    def run_sea_surface(self):
+        self.Ts = self.SST
+        Tatm = self.theta/((1e5/self.Ps)**(self.Rd/self.cp))
+        
+        # compute ra
+        ueff = np.sqrt(self.u ** 2. + self.v ** 2. + self.wstar**2.)
+
+        if(self.sw_sl):
+          self.ra = (self.Cs * ueff)**-1.
+        else:
+          self.ra = ueff / max(1.e-3, self.ustar)**2.
+          
+        self.qsatsurf = qsat(self.Ts, self.Ps)
+        self.LE     = (self.rho*self.Lv)/self.ra*(self.qsatsurf - self.q)
+        self.H      = (self.rho*self.cp)/self.ra*(self.Ts - Tatm)
+        self.G      = np.nan
+        
+        # calculate kinematic heat fluxes
+        self.wtheta   = self.H  / (self.rho * self.cp)
+        self.wq       = self.LE / (self.rho * self.Lv)
+        
+        self.thetasurf = self.Ts*((1e5/self.Ps)**(self.Rd/self.cp))
+        
   
     # store model output
     def store_NetCDF(self):
@@ -1180,12 +1217,15 @@ class model:
         del(self.LEpot)
         del(self.LEref)
         del(self.G)
+        
+        del(self.SST)
   
         del(self.sw_ls)
         del(self.sw_rad)
         del(self.sw_sl)
         del(self.sw_wind)
         del(self.sw_shearwe)
+        del(self.sw_ss)
 
 # class for storing mixed-layer model output data
 class model_output:
@@ -1354,6 +1394,10 @@ class model_input:
         self.cc         = None  # cloud cover fraction [-]
         self.Q          = None  # net radiation [W m-2] 
         self.dFz        = None  # cloud top radiative divergence [W m-2] 
+
+        # sea surface parameters
+        self.sw_ss      = None
+        self.SST        = None
 
         # land surface parameters
         self.sw_ls      = None  # land surface switch

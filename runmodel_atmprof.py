@@ -92,6 +92,9 @@ run1input.cc         = 0.0       # cloud cover fraction [-]
 run1input.Q          = 400.      # net radiation [W m-2] 
 run1input.dFz        = 0.        # cloud top radiative divergence [W m-2] 
 
+run1input.sw_ss      = True     # land surface switch
+run1input.SST        = df['theta'][0]+2 # sea surface temperature
+
 run1input.sw_ls      = False     # land surface switch
 run1input.ls_type    = 'js'      # land-surface parameterization ('js' for Jarvis-Stewart or 'ags' for A-Gs)
 run1input.wg         = 0.21      # volumetric water content top soil layer [m3 m-3]
@@ -157,12 +160,20 @@ plt.show()
 
 fig, axs = plt.subplots(2,3)
 ax = axs.flatten()
-for i, var in enumerate(['theta', 'gammatheta', 'dthetav','q',  'gammaq', 'dq']):
+for i, (key, var) in enumerate({'theta [K]' : 'theta', 
+                              'gamma theta [K km-1]' : 'gammatheta', 
+                              'd thetav [K]' : 'dthetav',
+                              'q [g kg-1]' : 'q',  
+                              'gamma q [g kg-1 km-1]' : 'gammaq', 
+                              'd q [g kg-1]': 'dq'}):
     mpt = 1
+    mpt2 = 1
     if 'q' in var:
         mpt = 1000
-    img = ax[i].plot(r1.out.__dict__[var]*mpt)
-    ax[i].set_title(var)
+    if 'gamma' in var:
+        mpt2 = 1000
+    img = ax[i].plot(r1.out.__dict__[var]*mpt*mpt2)
+    ax[i].set_title(key)
     
 fig.tight_layout()
 plt.show()
