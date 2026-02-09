@@ -99,7 +99,7 @@ class model:
 
         # Read switches
         self.sw_ap      = self.input.sw_ap      # atmospheric profile switch
-        self.sw_sp      = self.input.sw_sp
+        self.sw_sp      = self.input.sw_sp      # spray switch
         self.sw_ml      = self.input.sw_ml      # mixed-layer model switch
         self.sw_shearwe = self.input.sw_shearwe # shear growth ABL switch
         self.sw_fixft   = self.input.sw_fixft   # Fix the free-troposphere switch
@@ -312,16 +312,22 @@ class model:
         self.sw_x       = self.input.sw_x       # switch distance instead of time
         self.col_vel    = self.input.col_vel    # column velocity [m s-1]
         self.x          = self.input.x          # numpy array with distances [m], evenly spaced
+        self.dx         = None
+        self.X          = self.input.X              # numpy array with surface codes (0=sea, 1=land)
         if(self.sw_x):
             self.runtime = self.x[-1]/self.col_vel
             self.dx      = self.x[1] - self.x[0]
             self.dt      = self.dx/self.col_vel
+            
         else:
             self.runtime    = self.input.runtime
             self.dt         = self.input.dt
         self.tsteps     = int(np.floor(self.runtime / self.dt))
         
         self.t          = 0
+        
+        if(self.sw_x):
+            self.get_surface()
         
         if self.sw_sp:
             self.tspray_idx = np.abs(np.arange(0, self.runtime, self.dt) - self.tspray).argmin()
@@ -442,7 +448,17 @@ class model:
     #     if 'v' in self.ap.columns:
     #         dv_ap = self.ap['v'][h_idx+1] - self.ap['v'][h_idx-1]
     #         print(f"dv model {self.dv}, profile {dv_ap}")
-            
+       
+    def get_surface(self):
+        if(self.X[self.t] == 0):
+            self.sw_ss = True
+            self.sw_ls = False
+        elif(self.X[self.t] == 1):
+            self.sw_ss = False
+            self.sw_ls = True
+        else:
+            raise CLASSSetupError("Surface not defined! Choose X=0 for sea or X=1 for land.")
+        
     def run_spray_evaporator(self):
         """
         Spray evaporation from given spray height calculated from wet bulb temperature
@@ -471,6 +487,9 @@ class model:
 
     def timestep(self):
         self.statistics()
+        
+        if(self.sw_x):
+            self.get_surface()
 
         # run radiation model
         if(self.sw_rad):
@@ -1100,6 +1119,12 @@ class model:
         del(self.tsteps)
         
         del(self.ap)
+        
+        del(self.sw_x)
+        del(self.col_vel)
+        del(self.x)
+        del(self.dx)
+        del(self.X)
 
         del(self.tspray)
         del(self.zspray)
@@ -1348,6 +1373,13 @@ class model_input:
         # mixed-layer variables
         self.sw_ap      = None
         self.ap         = None
+        
+        
+        
+        self.sw_x       = None  # switch distance instead of time
+        self.col_vel    = None  # column velocity [m s-1]
+        self.x          = None  # numpy array with distances [m], evenly spaced
+        self.X         = None  # numpy array with surface codes (0=sea, 1=land)
         
         self.sw_sp      = None
         self.tspray     = None
