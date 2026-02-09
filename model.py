@@ -99,6 +99,7 @@ class model:
 
         # Read switches
         self.sw_ap      = self.input.sw_ap      # atmospheric profile switch
+        self.sw_sp      = self.input.sw_sp
         self.sw_ml      = self.input.sw_ml      # mixed-layer model switch
         self.sw_shearwe = self.input.sw_shearwe # shear growth ABL switch
         self.sw_fixft   = self.input.sw_fixft   # Fix the free-troposphere switch
@@ -116,7 +117,10 @@ class model:
         # spraying setup
         self.tspray     = self.input.tspray     # time of spraying [s]
         self.zspray     = self.input.zspray     # height of spraying [m]
-        self.tspray_idx = np.abs(np.arange(0, self.input.runtime, self.input.dt) - self.tspray).argmin()
+        self.tspray_idx = self.input.tspray_idx
+        
+        if self.sw_sp:
+            self.tspray_idx = np.abs(np.arange(0, self.input.runtime, self.input.dt) - self.tspray).argmin()
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -479,8 +483,9 @@ class model:
             self.run_mixed_layer()
             
         # run spray model
-        if(self.t == self.tspray_idx):
-            self.run_spray_evaporator()
+        if(self.sw_sp):
+            if(self.t == self.tspray_idx):
+                self.run_spray_evaporator()
  
         # store output before time integration
         self.store()
@@ -1225,6 +1230,7 @@ class model:
         del(self.sw_wind)
         del(self.sw_shearwe)
         del(self.sw_ap)
+        del(self.sw_sp)
         del(self.sw_ss)
 
 # class for storing mixed-layer model output data
@@ -1333,6 +1339,7 @@ class model_input:
         self.sw_ap      = None
         self.ap         = None
         
+        self.sw_sp      = None
         self.tspray     = None
         self.zspray     = None
         self.tspray_idx = None

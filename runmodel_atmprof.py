@@ -33,9 +33,10 @@ run1input.runtime    = 6*3600    # total run time [s]
 # When active, the provided dataframe will be used to calculate the initial, gradient, 
 # and jump values of the variables present. 
 # The dataframe should contain a column labeled 'z' and optionally 'theta', 'q', 'u', 'v'.
-run1input.sw_ap      = True      # atmospheric profile switch
+run1input.sw_ap      = False      # atmospheric profile switch
 run1input.ap = df
 
+run1input.sw_sp      = False     # spray switch
 run1input.tspray     = 3600      # time of spraying [s]
 run1input.zspray     = 100       # height of spraying [m]
 
@@ -142,30 +143,33 @@ r1.run()
 Plot output
 """
 
-# plt.plot(r1.out.h)
-fig, axs = plt.subplots(2,2)
-ax = axs.flatten()
-for i, var in enumerate(['theta', 'q', 'u', 'v']):
-    mpt = 1
-    if var == 'q':
-        mpt = 1000
-    img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
-                         r1.out_NetCDF[var].T*mpt, levels=20)
-    plt.colorbar(img)
-    ax[i].set_title(var)
+# # plt.plot(r1.out.h)
+# fig, axs = plt.subplots(2,2)
+# ax = axs.flatten()
+# for i, var in enumerate(['theta', 'q', 'u', 'v']):
+#     mpt = 1
+#     if var == 'q':
+#         mpt = 1000
+#     img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
+#                          r1.out_NetCDF[var].T*mpt, levels=20)
+#     plt.colorbar(img)
+#     ax[i].set_title(var)
 
-fig.tight_layout()
-plt.show()
-# plt.ylim(0,len(df))
+# fig.tight_layout()
+# plt.show()
+# # plt.ylim(0,len(df))
 
-fig, axs = plt.subplots(2,3)
+variables = {'theta [K]' : 'theta', 
+            'gamma theta [K km-1]' : 'gammatheta', 
+            'd thetav [K]' : 'dthetav',
+            'q [g kg-1]' : 'q',  
+            'gamma q [g kg-1 km-1]' : 'gammaq', 
+            'd q [g kg-1]': 'dq'}
+
+fig, axs = plt.subplots(2,3, figsize=(7,4))
 ax = axs.flatten()
-for i, (key, var) in enumerate({'theta [K]' : 'theta', 
-                              'gamma theta [K km-1]' : 'gammatheta', 
-                              'd thetav [K]' : 'dthetav',
-                              'q [g kg-1]' : 'q',  
-                              'gamma q [g kg-1 km-1]' : 'gammaq', 
-                              'd q [g kg-1]': 'dq'}):
+for i, key in enumerate(variables):
+    var = variables[key]
     mpt = 1
     mpt2 = 1
     if 'q' in var:
