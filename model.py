@@ -118,9 +118,6 @@ class model:
         self.tspray     = self.input.tspray     # time of spraying [s]
         self.zspray     = self.input.zspray     # height of spraying [m]
         self.tspray_idx = self.input.tspray_idx
-        
-        if self.sw_sp:
-            self.tspray_idx = np.abs(np.arange(0, self.input.runtime, self.input.dt) - self.tspray).argmin()
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -312,9 +309,22 @@ class model:
         self.wqM        = 0.                    # Cloud core moisture flux [kg kg-1 m s-1] 
   
         # initialize time variables
-        self.tsteps = int(np.floor(self.input.runtime / self.input.dt))
-        self.dt     = self.input.dt
-        self.t      = 0
+        self.sw_x       = self.input.sw_x       # switch distance instead of time
+        self.col_vel    = self.input.col_vel    # column velocity [m s-1]
+        self.x          = self.input.x          # numpy array with distances [m], evenly spaced
+        if(self.sw_x):
+            self.runtime = self.x[-1]/self.col_vel
+            self.dx      = self.x[1] - self.x[0]
+            self.dt      = self.dx/self.col_vel
+        else:
+            self.runtime    = self.input.runtime
+            self.dt         = self.input.dt
+        self.tsteps     = int(np.floor(self.runtime / self.dt))
+        
+        self.t          = 0
+        
+        if self.sw_sp:
+            self.tspray_idx = np.abs(np.arange(0, self.runtime, self.dt) - self.tspray).argmin()
  
         # Some sanity checks for valid input
         if (self.c_beta is None): 
@@ -349,7 +359,7 @@ class model:
                     data_vars[col] = (("time", "z"), np.zeros((self.tsteps, len(self.ap))))
 
             self.out_NetCDF = xr.Dataset(data_vars = data_vars,
-                                         coords = {'time':np.linspace(self.tstart,self.input.runtime+self.tstart,self.tsteps),
+                                         coords = {'time':np.linspace(self.tstart,self.runtime+self.tstart,self.tsteps),
                                                    'z':self.ap['z'].values})
             self.store_NetCDF()
 

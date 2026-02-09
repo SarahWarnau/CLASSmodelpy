@@ -8,6 +8,7 @@ Created on Tue Feb  3 15:55:01 2026
 from model import *
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 """
 Get pandas dataframe with atmosheric profiles on z levels
@@ -33,8 +34,12 @@ run1input.runtime    = 6*3600    # total run time [s]
 # When active, the provided dataframe will be used to calculate the initial, gradient, 
 # and jump values of the variables present. 
 # The dataframe should contain a column labeled 'z' and optionally 'theta', 'q', 'u', 'v'.
-run1input.sw_ap      = False      # atmospheric profile switch
+run1input.sw_ap      = True      # atmospheric profile switch
 run1input.ap = df
+
+run1input.sw_x       = True     # switch distance instead of time
+run1input.col_vel    = 4.        # column velocity [m s-1]
+run1input.x          = np.arange(0, 20e3, 100) # numpy array with distances [m], evenly spaced
 
 run1input.sw_sp      = False     # spray switch
 run1input.tspray     = 3600      # time of spraying [s]
@@ -84,7 +89,7 @@ run1input.ustar      = 0.3       # surface friction velocity [m s-1]
 run1input.z0m        = 0.02      # roughness length for momentum [m]
 run1input.z0h        = 0.002     # roughness length for scalars [m]
 
-run1input.sw_rad     = True     # radiation switch
+run1input.sw_rad     = False     # radiation switch
 run1input.lat        = 51.97     # latitude [deg]
 run1input.lon        = -4.93     # longitude [deg]
 run1input.doy        = 268.      # day of the year [-]
@@ -93,7 +98,7 @@ run1input.cc         = 0.0       # cloud cover fraction [-]
 run1input.Q          = 400.      # net radiation [W m-2] 
 run1input.dFz        = 0.        # cloud top radiative divergence [W m-2] 
 
-run1input.sw_ss      = True     # land surface switch
+run1input.sw_ss      = True     # sea surface switch
 run1input.SST        = df['theta'][0]+2 # sea surface temperature
 
 run1input.sw_ls      = False     # land surface switch
@@ -143,21 +148,21 @@ r1.run()
 Plot output
 """
 
-# # plt.plot(r1.out.h)
-# fig, axs = plt.subplots(2,2)
-# ax = axs.flatten()
-# for i, var in enumerate(['theta', 'q', 'u', 'v']):
-#     mpt = 1
-#     if var == 'q':
-#         mpt = 1000
-#     img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
-#                          r1.out_NetCDF[var].T*mpt, levels=20)
-#     plt.colorbar(img)
-#     ax[i].set_title(var)
+# plt.plot(r1.out.h)
+fig, axs = plt.subplots(2,2)
+ax = axs.flatten()
+for i, var in enumerate(['theta', 'q', 'u', 'v']):
+    mpt = 1
+    if var == 'q':
+        mpt = 1000
+    img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
+                         r1.out_NetCDF[var].T*mpt, levels=20)
+    plt.colorbar(img)
+    ax[i].set_title(var)
 
-# fig.tight_layout()
-# plt.show()
-# # plt.ylim(0,len(df))
+fig.tight_layout()
+plt.show()
+# plt.ylim(0,len(df))
 
 variables = {'theta [K]' : 'theta', 
             'gamma theta [K km-1]' : 'gammatheta', 
