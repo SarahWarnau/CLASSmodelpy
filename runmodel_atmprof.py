@@ -223,3 +223,15 @@ else:
     img = ax[-2].plot(r1.out.__dict__['zlcl'])
 fig.tight_layout()
 plt.show()
+
+#%% Test energy balance with atmospheric profile cases
+
+fig, ax = plt.subplots(1, 2)
+ax[0].plot(r1.out.x[1:], r1.out_NetCDF['theta'].sum('z').values[1:] - r1.out_NetCDF['theta'].sum('z').values[:-1])
+ax[0].plot(r1.out.x[1:], r1.out.wtheta[1:]*r1.out.dt[1:])
+ax[1].plot(r1.out.x[1:], r1.out_NetCDF['q'].sum('z').values[1:] - r1.out_NetCDF['q'].sum('z').values[:-1])
+for axs in ax:
+    axs.axvline(x_spray, zorder=0, linestyle=':')
+
+ax[0].set_ylim(-100, 100)
+ax[1].set_ylim(-0.1, 0.1)
