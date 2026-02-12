@@ -49,7 +49,7 @@ run1input.ap = df
 run1input.sw_x       = True     # switch distance instead of time
 run1input.col_vel    = 4.        # column velocity [m s-1]
 run1input.x          = x         # numpy array with distances [m], evenly spaced
-run1input.X          = X         # numpy array with surface codes (0=sea, 1=land)
+run1input.X          = X         # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
 
 run1input.sw_sp      = True     # spray switch
 run1input.tspray     = x_spray/run1input.col_vel      # time of spraying [s]

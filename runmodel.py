@@ -5,6 +5,8 @@
 
 from pylab import *
 from model import *
+import pandas as pd
+import numpy as np
 
 """ 
 Create empty model_input and set up case
@@ -13,6 +15,30 @@ run1input = model_input()
 
 run1input.dt         = 60.       # time step [s]
 run1input.runtime    = 12*3600    # total run time [s]
+
+# new inputs
+run1input.sw_ap      = False      # atmospheric profile switch
+run1input.ap         = pd.DataFrame({'z':np.arange(0,1e3)})
+
+run1input.sw_x       = False     # switch distance instead of time
+run1input.col_vel    = 1.        # column velocity [m s-1]
+run1input.x          = np.arange(0,1e3,1) # numpy array with distances [m], evenly spaced
+run1input.X          = np.ones(int(1e3))   # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
+
+run1input.sw_sp      = False     # spray switch
+run1input.tspray     = 1*3600    # time of spraying [s]
+run1input.zspray     = 100       # height of spraying [m]
+
+run1input.sw_so      = False     # solar evaporation technology switch
+run1input.rstech     = 0.        # surface resistance to evaporation of solar evaporator
+run1input.z0mtech    = 0.01      # roughness length for momentum solar evaporator [m]
+run1input.z0htech    = 0.01      # roughness length for scalars solar evaporator [m]
+run1input.Qin        = 1000.     # net incoming radiation (Swin + Lwin)
+
+run1input.sw_ss      = False     # sea surface switch
+run1input.SST        = 290.      # sea surface temperature
+run1input.z0msea     = 1e-4      # roughness length for momentum solar evaporator [m]
+run1input.z0hsea     = 1e-4      # roughness length for scalars solar evaporator [m]
 
 # mixed-layer input
 run1input.sw_ml      = True      # mixed-layer model switch
