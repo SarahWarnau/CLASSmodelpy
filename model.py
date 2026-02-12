@@ -108,6 +108,7 @@ class model:
         self.sw_rad     = self.input.sw_rad     # radiation switch
         self.sw_ss      = self.input.sw_ss      # sea surface switch
         self.sw_ls      = self.input.sw_ls      # land surface switch
+        self.sw_so      = self.input.sw_so      # solar evaporation technology switch
         self.ls_type    = self.input.ls_type    # land surface paramaterization (js or ags)
         self.sw_cu      = self.input.sw_cu      # cumulus parameterization switch
         
@@ -118,6 +119,12 @@ class model:
         self.tspray     = self.input.tspray     # time of spraying [s]
         self.zspray     = self.input.zspray     # height of spraying [m]
         self.tspray_idx = self.input.tspray_idx
+        
+        # solar evaporation technology setup
+        self.epsilon = 1.
+        self.varepsilon = self.Rd/self.Rv
+        # self.Ts     = self.input.theta
+        self.rstech = self.input.rstech
   
         # initialize mixed-layer
         self.h          = self.input.h          # initial ABL height [m]
@@ -242,8 +249,9 @@ class model:
         self.Lwin       = None                  # incoming long wave radiation [W m-2]
         self.Lwout      = None                  # outgoing long wave radiation [W m-2]
         self.Q          = self.input.Q          # net radiation [W m-2]
+        self.Qin        = self.input.Qin
         self.dFz        = self.input.dFz        # cloud top radiative divergence [W m-2] 
-  
+        
         # initialize sea surface
         self.SST        = self.input.SST        # sea surface temperature [K]  
   
@@ -313,7 +321,7 @@ class model:
         self.col_vel    = self.input.col_vel    # column velocity [m s-1]
         self.x          = self.input.x          # numpy array with distances [m], evenly spaced
         self.dx         = None
-        self.X          = self.input.X              # numpy array with surface codes (0=sea, 1=land)
+        self.X          = self.input.X              # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
         if(self.sw_x):
             self.runtime = self.x[-1]/self.col_vel
             self.dx      = self.x[1] - self.x[0]
@@ -339,8 +347,8 @@ class model:
         if(self.sw_ap):
             if 'z' not in self.ap.columns:
                 raise CLASSSetupError("The provided atmospheric profile has no column labeled 'z'!")
-        if(self.sw_ss & self.sw_ls):
-            raise CLASSSetupError("Both land and sea surfaces are active, choose one!")
+        if(self.sw_ss + self.sw_ls + self.sw_so > 1):
+            raise CLASSSetupError("More than one surface module is active, choose one!")
 
         if(self.sw_ap):
             h_idx = np.abs(self.ap['z'] - self.h).argmin()
@@ -382,12 +390,16 @@ class model:
             for i in range(10): 
                 self.run_surface_layer()
   
+        if(self.sw_ss):
+            self.run_sea_surface()  
+  
         if(self.sw_ls):
+            self.Ts = self.input.Ts
             self.run_land_surface()
             
-        # run sea surface model
-        if(self.sw_ss):
-            self.run_sea_surface()
+        if(self.sw_so):
+            for i in range(10): 
+                self.run_solar_technology_surface()
 
         if(self.sw_cu):
             self.run_mixed_layer()
@@ -453,9 +465,22 @@ class model:
         if(self.X[self.t] == 0):
             self.sw_ss = True
             self.sw_ls = False
+            self.sw_so = False
+            if(self.X[self.t-1]!=0):
+                self.Ts = self.input.SST
         elif(self.X[self.t] == 1):
             self.sw_ss = False
             self.sw_ls = True
+            self.sw_so = False
+            if(self.X[self.t-1]!=1):
+                self.Ts = self.input.Ts
+        elif(self.X[self.t] == 2):
+            self.sw_ss = False
+            self.sw_ls = False
+            self.sw_so = True
+            if(self.X[self.t-1]!=2):
+                self.Ts = self.input.SST
+        # Add solar
         else:
             raise CLASSSetupError("Surface not defined! Choose X=0 for sea or X=1 for land.")
         
@@ -499,13 +524,17 @@ class model:
         if(self.sw_sl):
             self.run_surface_layer()
         
-        # run sea surface model
+        # run sea surface model [X code 0]
         if(self.sw_ss):
             self.run_sea_surface()
         
-        # run land surface model
+        # run land surface [X code 1]
         if(self.sw_ls):
             self.run_land_surface()
+        
+        # run solar technology surface [X code 2]
+        if(self.sw_so):
+            self.run_solar_technology_surface()
  
         # run cumulus parameterization
         if(self.sw_cu):
@@ -718,6 +747,7 @@ class model:
         self.Lwout = self.bolz * self.Ts ** 4.
           
         self.Q     = self.Swin - self.Swout + self.Lwin - self.Lwout
+        self.Qin   = self.Swin + self.Lwin
   
     def run_surface_layer(self):
         ueff           = max(0.01, np.sqrt(self.u**2. + self.v**2. + self.wstar**2.))
@@ -1012,6 +1042,58 @@ class model:
         self.wq       = self.LE / (self.rho * self.Lv)
         
         self.thetasurf = self.Ts*((1e5/self.Ps)**(self.Rd/self.cp))
+        
+    def run_solar_technology_surface(self):
+        T0 = self.Ts
+        Tatm = self.theta/((100000/self.Ps)**(self.Rd/self.cp))
+        rnetin = self.Qin
+        
+        # compute ra
+        ueff = np.sqrt(self.u ** 2. + self.v ** 2. + self.wstar**2.)
+
+        if(self.sw_sl):
+          self.ra = (self.Cs * ueff)**-1.
+        else:
+          self.ra = ueff / max(1.e-3, self.ustar)**2.
+        
+        self.varepsilon = self.Rd/self.Rv
+        A = (self.varepsilon*611.2)/self.Ps
+        B = 17.67/(T0 - 29.65)
+        X = np.exp((T0 - 273.15)*B)
+        C = A*B*243.5/(T0 - 29.65)
+        D = (self.rho*self.Lv)/(self.ra + self.rstech)
+        E = (self.rho*self.cp)/self.ra
+
+        numerator = (
+            3*self.epsilon*self.bolz*T0**4
+            + D*((C*T0 - A)*X +self.q)
+            + E * Tatm
+            + rnetin
+        )
+        denominator = (
+            4*self.epsilon*self.bolz*T0**3
+            + C*D*X
+            + E
+        )
+        
+        self.Ts   = numerator / denominator
+        
+        self.qsatsurf = qsat(self.Ts, self.Ps)
+
+        # self.LE     = D*(self.qsat - self.q)
+        self.LE     = D*(self.qsatsurf - self.q)
+        # print(D, self.qsat, self.q)
+        self.H      = E*(self.Ts - Tatm)
+        self.G      = 0.
+        
+        # esatsurf      = esat(self.Ts)
+        # self.qsatsurf = qsat(self.Ts, self.Ps)
+        
+        # calculate kinematic heat fluxes
+        self.wtheta   = self.H  / (self.rho * self.cp)
+        self.wq       = self.LE / (self.rho * self.Lv)
+        
+        self.thetasurf = self.Ts*((100000/self.Ps)**(self.Rd/self.cp))
           
     # store model output
     def store_NetCDF(self):
@@ -1025,6 +1107,9 @@ class model:
         t                      = self.t
         self.out.t[t]          = t * self.dt / 3600. + self.tstart
         self.out.h[t]          = self.h
+        
+        self.out.x[t]          = self.x[t]
+        self.out.X[t]          = self.X[t]
         
         self.out.theta[t]      = self.theta
         self.out.thetav[t]     = self.thetav
@@ -1086,6 +1171,7 @@ class model:
         self.out.Lwin[t]       = self.Lwin
         self.out.Lwout[t]      = self.Lwout
         self.out.Q[t]          = self.Q
+        self.out.Qin[t]        = self.Qin
   
         self.out.ra[t]         = self.ra
         self.out.rs[t]         = self.rs
@@ -1252,6 +1338,7 @@ class model:
         del(self.Lambda)
         
         del(self.Q)
+        del(self.Qin)
         del(self.H)
         del(self.LE)
         del(self.LEliq)
@@ -1262,6 +1349,10 @@ class model:
         del(self.G)
         
         del(self.SST)
+        
+        del(self.epsilon)
+        del(self.varepsilon)
+        del(self.rstech)
   
         del(self.sw_ls)
         del(self.sw_rad)
@@ -1276,6 +1367,8 @@ class model:
 class model_output:
     def __init__(self, tsteps):
         self.t          = np.zeros(tsteps)    # time [s]
+        self.x          = np.zeros(tsteps)    # distance [m]
+        self.X          = np.zeros(tsteps)    # surface code
 
         # mixed-layer variables
         self.h          = np.zeros(tsteps)    # ABL height [m]
@@ -1345,6 +1438,7 @@ class model_output:
         self.Lwin       = np.zeros(tsteps)    # incoming long wave radiation [W m-2]
         self.Lwout      = np.zeros(tsteps)    # outgoing long wave radiation [W m-2]
         self.Q          = np.zeros(tsteps)    # net radiation [W m-2]
+        self.Qin        = np.zeros(tsteps)    # net incoming radiation (Swin + Lwin) [W m-2]
 
         # land surface variables
         self.ra         = np.zeros(tsteps)    # aerodynamic resistance [s m-1]
@@ -1378,17 +1472,20 @@ class model_input:
         self.sw_ap      = None
         self.ap         = None
         
-        
-        
         self.sw_x       = None  # switch distance instead of time
         self.col_vel    = None  # column velocity [m s-1]
         self.x          = None  # numpy array with distances [m], evenly spaced
-        self.X         = None  # numpy array with surface codes (0=sea, 1=land)
+        self.X          = None  # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
         
         self.sw_sp      = None
         self.tspray     = None
         self.zspray     = None
         self.tspray_idx = None
+        
+        self.epsilon    = None
+        self.varepsilon = None
+        self.Ts         = None
+        self.rstech     = None
         
         self.sw_ml      = None  # mixed-layer model switch
         self.sw_shearwe = None  # Shear growth ABL switch
@@ -1446,6 +1543,7 @@ class model_input:
         self.tstart     = None  # time of the day [h UTC]
         self.cc         = None  # cloud cover fraction [-]
         self.Q          = None  # net radiation [W m-2] 
+        self.Qin        = None  # net incoming radiation [W m-2]
         self.dFz        = None  # cloud top radiative divergence [W m-2] 
 
         # sea surface parameters

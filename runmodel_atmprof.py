@@ -13,18 +13,21 @@ import numpy as np
 """
 Get pandas dataframe with atmosheric profiles on z levels
 """
-z = np.arange(0, 2000, 0.1, dtype=np.float64())
+z = np.arange(0, 1000, 0.1, dtype=np.float64())
 df = pd.DataFrame({'z':z,
-                   'theta':300+z*6e-3,
-                   'q':12e-3-z*1e-6,
+                   'theta':293+z*6e-3,
+                   'q':9e-3-z*1e-6,
                    'u':4 + z*1e-2,
                    'v':z*0}
                   )
 # df.loc[:10, 'theta'] = 288
-
-x = np.arange(0, 20e3, 100)
+dx = 100
+x = np.arange(0, 25e3, dx)
 X = np.zeros(len(x))
-X[100:] = 1
+X[int(15e3/dx):] = 1
+X[int(5e3/dx):int(10e3/dx)] = 2
+
+x_spray = 8e3
 
 
 """ 
@@ -33,7 +36,7 @@ Create empty model_input and set up case
 run1input = model_input()
 
 run1input.dt         = 60.       # time step [s]
-run1input.runtime    = 6*3600    # total run time [s]
+run1input.runtime    = 3*3600    # total run time [s]
 
 # atmospheric profile input
 # When active, the provided dataframe will be used to calculate the initial, gradient, 
@@ -46,19 +49,23 @@ run1input.sw_x       = True     # switch distance instead of time
 run1input.col_vel    = 4.        # column velocity [m s-1]
 run1input.x          = x         # numpy array with distances [m], evenly spaced
 run1input.X          = X         # numpy array with surface codes (0=sea, 1=land)
+# Add roughness lengths lists for all surfaces
 
-run1input.sw_sp      = False     # spray switch
-run1input.tspray     = 3600      # time of spraying [s]
+run1input.sw_sp      = True     # spray switch
+run1input.tspray     = x_spray/run1input.col_vel      # time of spraying [s]
 run1input.zspray     = 100       # height of spraying [m]
 
+run1input.sw_so      = False      # solar evaporation technology switch
+run1input.rstech     = 0.        # surface resistance to evaporation of solar evaporator
+
 # mixed-layer input
-run1input.sw_ml      = True      # mixed-layer model switch
+run1input.sw_ml      = True     # mixed-layer model switch
 run1input.sw_shearwe = True     # shear growth mixed-layer switch
 run1input.sw_fixft   = True      # Fix the free-troposphere switch
 run1input.h          = 200.      # initial ABL height [m]
 run1input.Ps         = 101300.   # surface pressure [Pa]
 run1input.divU       = 0.        # horizontal large-scale divergence of wind [s-1]
-run1input.fc         = 1.e-4     # Coriolis parameter [m s-1]
+run1input.fc         = 0#1.e-4     # Coriolis parameter [m s-1]
 
 run1input.theta      = 288.      # initial mixed-layer potential temperature [K]
 run1input.dtheta     = 1.        # initial temperature jump at h [K]
@@ -96,18 +103,19 @@ run1input.z0m        = 0.02      # roughness length for momentum [m]
 run1input.z0h        = 0.002     # roughness length for scalars [m]
 
 run1input.sw_rad     = False     # radiation switch
-run1input.lat        = 51.97     # latitude [deg]
-run1input.lon        = -4.93     # longitude [deg]
-run1input.doy        = 268.      # day of the year [-]
-run1input.tstart     = 6.8       # time of the day [h UTC]
+run1input.lat        = 30.     # latitude [deg]
+run1input.lon        = 0.     # longitude [deg]
+run1input.doy        = 180.      # day of the year [-]
+run1input.tstart     = 9.        # time of the day [h UTC]
 run1input.cc         = 0.0       # cloud cover fraction [-]
-run1input.Q          = 400.      # net radiation [W m-2] 
+run1input.Q          = 600.      # net radiation [W m-2] 
+run1input.Qin        = 1000.     # net incoming radiation (Swin + Lwin)
 run1input.dFz        = 0.        # cloud top radiative divergence [W m-2] 
 
-run1input.sw_ss      = True     # sea surface switch
-run1input.SST        = df['theta'][0]+2 # sea surface temperature
+run1input.sw_ss      = False     # sea surface switch
+run1input.SST        = df['theta'][0]+0.5 # sea surface temperature
 
-run1input.sw_ls      = False     # land surface switch
+run1input.sw_ls      = True     # land surface switch
 run1input.ls_type    = 'js'      # land-surface parameterization ('js' for Jarvis-Stewart or 'ags' for A-Gs)
 run1input.wg         = 0.21      # volumetric water content top soil layer [m3 m-3]
 run1input.w2         = 0.21      # volumetric water content deeper soil layer [m3 m-3]
@@ -132,7 +140,7 @@ run1input.rsmin      = 110.      # minimum resistance transpiration [s m-1]
 run1input.rssoilmin  = 50.       # minimun resistance soil evaporation [s m-1]
 run1input.alpha      = 0.25      # surface albedo [-]
 
-run1input.Ts         = 290.      # initial surface temperature [K]
+run1input.Ts         = 300.      # initial surface temperature [K]
 
 run1input.Wmax       = 0.0002    # thickness of water layer on wet vegetation [m]
 run1input.Wl         = 0.0000    # equivalent water layer depth for wet vegetation [m]
@@ -161,8 +169,12 @@ for i, var in enumerate(['theta', 'q', 'u', 'v']):
     mpt = 1
     if var == 'q':
         mpt = 1000
-    img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
-                         r1.out_NetCDF[var].T*mpt, levels=20)
+    if run1input.sw_x:
+        img = ax[i].contourf(x[:-1]/1000, r1.out_NetCDF['z']/1000, 
+                             r1.out_NetCDF[var].T*mpt, levels=20)
+    else:
+        img = ax[i].contourf(r1.out_NetCDF['time']/3600, r1.out_NetCDF['z']/1000, 
+                             r1.out_NetCDF[var].T*mpt, levels=20)
     plt.colorbar(img)
     ax[i].set_title(var)
 
@@ -175,9 +187,15 @@ variables = {'theta [K]' : 'theta',
             'd thetav [K]' : 'dthetav',
             'q [g kg-1]' : 'q',  
             'gamma q [g kg-1 km-1]' : 'gammaq', 
-            'd q [g kg-1]': 'dq'}
+            'd q [g kg-1]': 'dq', 
+            'theta surf. [K]':'thetasurf',
+            'LE [W m-2]':'LE',
+            'H [W m-2]':'H',
+            'surface code':'X',
+            'ABL [m]':'h',
+            'Net Radiation (in) [W m-2]':'Q'}
 
-fig, axs = plt.subplots(2,3, figsize=(7,4))
+fig, axs = plt.subplots(4,3, figsize=(7,4))
 ax = axs.flatten()
 for i, key in enumerate(variables):
     var = variables[key]
@@ -187,8 +205,15 @@ for i, key in enumerate(variables):
         mpt = 1000
     if 'gamma' in var:
         mpt2 = 1000
-    img = ax[i].plot(r1.out.__dict__[var]*mpt*mpt2)
+    if run1input.sw_x:
+        img = ax[i].plot(x[:-1]/1000, r1.out.__dict__[var]*mpt*mpt2)
+    else:
+        img = ax[i].plot(r1.out.__dict__[var]*mpt*mpt2)
     ax[i].set_title(key)
-    
+
+if run1input.sw_x:
+    img = ax[i].plot(x[:-1]/1000, r1.out.__dict__['Qin']*mpt*mpt2)
+else:
+    img = ax[i].plot(r1.out.__dict__['Qin']*mpt*mpt2)
 fig.tight_layout()
 plt.show()
