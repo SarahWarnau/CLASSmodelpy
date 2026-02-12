@@ -13,7 +13,8 @@ import numpy as np
 """
 Get pandas dataframe with atmosheric profiles on z levels
 """
-z = np.arange(0, 1000, 0.1, dtype=np.float64())
+dz = 0.1
+z = np.arange(0, 750, dz, dtype=np.float64())
 df = pd.DataFrame({'z':z,
                    'theta':293+z*6e-3,
                    'q':9e-3-z*1e-6,
@@ -49,7 +50,6 @@ run1input.sw_x       = True     # switch distance instead of time
 run1input.col_vel    = 4.        # column velocity [m s-1]
 run1input.x          = x         # numpy array with distances [m], evenly spaced
 run1input.X          = X         # numpy array with surface codes (0=sea, 1=land)
-# Add roughness lengths lists for all surfaces
 
 run1input.sw_sp      = True     # spray switch
 run1input.tspray     = x_spray/run1input.col_vel      # time of spraying [s]
@@ -225,13 +225,20 @@ fig.tight_layout()
 plt.show()
 
 #%% Test energy balance with atmospheric profile cases
-
-fig, ax = plt.subplots(1, 2)
-ax[0].plot(r1.out.x[1:], r1.out_NetCDF['theta'].sum('z').values[1:] - r1.out_NetCDF['theta'].sum('z').values[:-1])
-ax[0].plot(r1.out.x[1:], r1.out.wtheta[1:]*r1.out.dt[1:])
-ax[1].plot(r1.out.x[1:], r1.out_NetCDF['q'].sum('z').values[1:] - r1.out_NetCDF['q'].sum('z').values[:-1])
-for axs in ax:
-    axs.axvline(x_spray, zorder=0, linestyle=':')
-
-ax[0].set_ylim(-100, 100)
-ax[1].set_ylim(-0.1, 0.1)
+if run1input.sw_ap:
+    fig, ax = plt.subplots(1, 2, figsize=(8,6))
+    ax[0].set_title('potential temperature change [K s-1]')
+    ax[0].plot(r1.out.x[1:], (r1.out_NetCDF['theta'].sum('z').values[1:] - r1.out_NetCDF['theta'].sum('z').values[:-1])*run1input.col_vel*dz/dx, label='change from profile output')
+    ax[0].plot(r1.out.x[1:], r1.out.wtheta[1:], label='surface flux')
+    ax[1].set_title('specific humidity change [g kg-1 s-1]')
+    ax[1].plot(r1.out.x[1:], 1e3*(r1.out_NetCDF['q'].sum('z').values[1:] - r1.out_NetCDF['q'].sum('z').values[:-1])*run1input.col_vel*dz/dx)
+    ax[1].plot(r1.out.x[1:], 1e3*r1.out.wq[1:])
+    
+    for axs in ax:
+        axs.axvline(x_spray, zorder=0, linestyle=':', label='moment of spray')
+    
+    ax[0].set_ylim(-0.1, 0.5)
+    ax[1].set_ylim(-0.1, 0.5)
+    ax[0].legend()
+    fig.suptitle("Energy and water conservation check")
+    fig.tight_layout()
