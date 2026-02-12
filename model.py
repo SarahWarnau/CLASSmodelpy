@@ -123,7 +123,6 @@ class model:
         # solar evaporation technology setup
         self.epsilon = 1.
         self.varepsilon = self.Rd/self.Rv
-        # self.Ts     = self.input.theta
         self.rstech = self.input.rstech
   
         # initialize mixed-layer
@@ -253,7 +252,7 @@ class model:
         self.dFz        = self.input.dFz        # cloud top radiative divergence [W m-2] 
         
         # initialize sea surface
-        self.SST        = self.input.SST        # sea surface temperature [K]  
+        self.SST        = self.input.SST        # sea surface temperature [K]
   
         # initialize land surface
         self.wg         = self.input.wg         # volumetric water content top soil layer [m3 m-3]
@@ -321,7 +320,7 @@ class model:
         self.col_vel    = self.input.col_vel    # column velocity [m s-1]
         self.x          = self.input.x          # numpy array with distances [m], evenly spaced
         self.dx         = None
-        self.X          = self.input.X              # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
+        self.X          = self.input.X          # numpy array with surface codes (0=sea, 1=land, 2=solar evaporator)
         if(self.sw_x):
             self.runtime = self.x[-1]/self.col_vel
             self.dx      = self.x[1] - self.x[0]
@@ -468,18 +467,24 @@ class model:
             self.sw_so = False
             if(self.X[self.t-1]!=0):
                 self.Ts = self.input.SST
+                self.z0m        = self.input.z0msea
+                self.z0h        = self.input.z0hsea
         elif(self.X[self.t] == 1):
             self.sw_ss = False
             self.sw_ls = True
             self.sw_so = False
             if(self.X[self.t-1]!=1):
                 self.Ts = self.input.Ts
+                self.z0m        = self.input.z0m        # roughness length for momentum [m]
+                self.z0h        = self.input.z0h        # roughness length for scalars [m]
         elif(self.X[self.t] == 2):
             self.sw_ss = False
             self.sw_ls = False
             self.sw_so = True
             if(self.X[self.t-1]!=2):
                 self.Ts = self.input.SST
+                self.z0m        = self.input.z0mtech        # roughness length for momentum [m]
+                self.z0h        = self.input.z0htech        # roughness length for scalars [m]
         # Add solar
         else:
             raise CLASSSetupError("Surface not defined! Choose X=0 for sea or X=1 for land.")
@@ -1106,6 +1111,7 @@ class model:
     def store(self):
         t                      = self.t
         self.out.t[t]          = t * self.dt / 3600. + self.tstart
+        self.out.dt[t]         = self.dt
         self.out.h[t]          = self.h
         
         self.out.x[t]          = self.x[t]
@@ -1367,6 +1373,7 @@ class model:
 class model_output:
     def __init__(self, tsteps):
         self.t          = np.zeros(tsteps)    # time [s]
+        self.dt         = np.zeros(tsteps)    # timestep [s]
         self.x          = np.zeros(tsteps)    # distance [m]
         self.X          = np.zeros(tsteps)    # surface code
 
@@ -1486,6 +1493,8 @@ class model_input:
         self.varepsilon = None
         self.Ts         = None
         self.rstech     = None
+        self.z0mtech    = None  
+        self.z0htech    = None 
         
         self.sw_ml      = None  # mixed-layer model switch
         self.sw_shearwe = None  # Shear growth ABL switch
@@ -1549,6 +1558,8 @@ class model_input:
         # sea surface parameters
         self.sw_ss      = None
         self.SST        = None
+        self.z0msea     = None  
+        self.z0hsea     = None 
 
         # land surface parameters
         self.sw_ls      = None  # land surface switch

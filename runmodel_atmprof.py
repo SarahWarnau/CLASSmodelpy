@@ -57,6 +57,8 @@ run1input.zspray     = 100       # height of spraying [m]
 
 run1input.sw_so      = False      # solar evaporation technology switch
 run1input.rstech     = 0.        # surface resistance to evaporation of solar evaporator
+run1input.z0mtech    = 0.01      # roughness length for momentum solar evaporator [m]
+run1input.z0htech    = 0.01      # roughness length for scalars solar evaporator [m]
 
 # mixed-layer input
 run1input.sw_ml      = True     # mixed-layer model switch
@@ -113,7 +115,9 @@ run1input.Qin        = 1000.     # net incoming radiation (Swin + Lwin)
 run1input.dFz        = 0.        # cloud top radiative divergence [W m-2] 
 
 run1input.sw_ss      = False     # sea surface switch
-run1input.SST        = df['theta'][0]+0.5 # sea surface temperature
+run1input.SST        = df['theta'][0]+2 # sea surface temperature
+run1input.z0msea    = 1e-4      # roughness length for momentum solar evaporator [m]
+run1input.z0hsea    = 1e-4      # roughness length for scalars solar evaporator [m]
 
 run1input.sw_ls      = True     # land surface switch
 run1input.ls_type    = 'js'      # land-surface parameterization ('js' for Jarvis-Stewart or 'ags' for A-Gs)
@@ -192,10 +196,10 @@ variables = {'theta [K]' : 'theta',
             'LE [W m-2]':'LE',
             'H [W m-2]':'H',
             'surface code':'X',
-            'ABL [m]':'h',
-            'Net Radiation (in) [W m-2]':'Q'}
+            'ABL (orange=LCL) [m]':'h',
+            'Net Radiation (orange=in) [W m-2]':'Q'}
 
-fig, axs = plt.subplots(4,3, figsize=(7,4))
+fig, axs = plt.subplots(4,3, figsize=(10,6))
 ax = axs.flatten()
 for i, key in enumerate(variables):
     var = variables[key]
@@ -212,8 +216,10 @@ for i, key in enumerate(variables):
     ax[i].set_title(key)
 
 if run1input.sw_x:
-    img = ax[i].plot(x[:-1]/1000, r1.out.__dict__['Qin']*mpt*mpt2)
+    img = ax[-1].plot(x[:-1]/1000, r1.out.__dict__['Qin']*mpt*mpt2)
+    img = ax[-2].plot(x[:-1]/1000, r1.out.__dict__['zlcl']*mpt*mpt2)
 else:
-    img = ax[i].plot(r1.out.__dict__['Qin']*mpt*mpt2)
+    img = ax[-1].plot(r1.out.__dict__['Qin'])
+    img = ax[-2].plot(r1.out.__dict__['zlcl'])
 fig.tight_layout()
 plt.show()
