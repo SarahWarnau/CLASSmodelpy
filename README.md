@@ -23,7 +23,7 @@ With the solar evaporation surface switch `sw_so=True` the surface fluxes are ca
 With the distance instead of time integration switch `sw_x=True` CLASS will run for a provided distance instead of a provided time. This has been implemented to facilitate running the model over different types of surfaces in one run. The velocity of ABL (column velocity `col_vel`) needs to be provided and in combination with the `numpy.array` `x` the `runtime` and `dt` are determined. From the `numpy.array` `X`, the codes are used to change the surface modules where 0=sea surface, 1=land surface, 2=solar evaporator surface.
 
 # Example setup
-The `runmodel_atmprof` contains an example of how to use all these functionalities, and retrieve and plot the outputs.
+`runmodel_atmprof.py` contains an example of how to use all these functionalities, and retrieve and plot the outputs.
 
 NOTE: the `Makefile` for compiling `ribtol.cpp` (fast Bulk Richardson - Obukhov length iterative solver) is not required to run CLASS. By default a (somewhat slower) Python solver is used, and the fast c++ version is only interesting for computationally expensive experiments.
 
