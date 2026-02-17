@@ -226,19 +226,33 @@ plt.show()
 
 #%% Test energy balance with atmospheric profile cases
 if run1input.sw_ap:
-    fig, ax = plt.subplots(1, 2, figsize=(8,6))
-    ax[0].set_title('potential temperature change [K s-1]')
-    ax[0].plot(r1.out.x[1:], (r1.out_NetCDF['theta'].sum('z').values[1:] - r1.out_NetCDF['theta'].sum('z').values[:-1])*run1input.col_vel*dz/dx, label='change from profile output')
-    ax[0].plot(r1.out.x[1:], r1.out.wtheta[1:], label='surface flux')
-    ax[1].set_title('specific humidity change [g kg-1 s-1]')
-    ax[1].plot(r1.out.x[1:], 1e3*(r1.out_NetCDF['q'].sum('z').values[1:] - r1.out_NetCDF['q'].sum('z').values[:-1])*run1input.col_vel*dz/dx)
-    ax[1].plot(r1.out.x[1:], 1e3*r1.out.wq[1:])
+    thetachange = (r1.out_NetCDF['theta'].sum('z').values[1:] - r1.out_NetCDF['theta'].sum('z').values[:-1])*run1input.col_vel*dz/dx
+    qchange = 1e3*(r1.out_NetCDF['q'].sum('z').values[1:] - r1.out_NetCDF['q'].sum('z').values[:-1])*run1input.col_vel*dz/dx
     
-    for axs in ax:
-        axs.axvline(x_spray, zorder=0, linestyle=':', label='moment of spray')
+    fig, ax = plt.subplots(2, 2, figsize=(9,6))
+    ax[0,0].set_title('potential temperature change [K s-1]')
+    ax[0,0].plot(r1.out.x[1:], thetachange, label='change from profile output')
+    ax[0,0].plot(r1.out.x[1:], r1.out.wtheta[1:], ls='--', label='surface flux')
+    ax[0,1].set_title('specific humidity change [g kg-1 s-1]')
+    ax[0,1].plot(r1.out.x[1:], qchange)
+    ax[0,1].plot(r1.out.x[1:], 1e3*r1.out.wq[1:], ls='--')
     
-    ax[0].set_ylim(-0.1, 0.5)
-    ax[1].set_ylim(-0.1, 0.5)
-    ax[0].legend()
+    if run1input.sw_sp:
+        thetachange[np.where(thetachange==min(thetachange))] = np.nan
+        qchange[np.where(qchange==max(qchange))] = np.nan
+        for axs in ax.flatten():
+            axs.axvline(x_spray, zorder=0, linestyle=':', label='moment of spray')
+    
+    # remove timestep of spray from data
+    ax[1,0].set_title('cumulative potential temperature change [K]')
+    ax[1,0].plot(r1.out.x[1:], np.nancumsum(thetachange), label='change from profile output')
+    ax[1,0].plot(r1.out.x[1:], np.cumsum(r1.out.wtheta[1:]), label='surface flux', ls='--')
+    ax[1,1].set_title('cumulative specific humidity change [g kg-1]')
+    ax[1,1].plot(r1.out.x[1:], np.nancumsum(qchange))
+    ax[1,1].plot(r1.out.x[1:], np.cumsum(1e3*r1.out.wq[1:]), ls='--')
+    
+    ax[0,0].set_ylim(-0.1, 0.5)
+    ax[0,1].set_ylim(-0.1, 0.5)
+    ax[0,0].legend()
     fig.suptitle("Energy and water conservation check")
     fig.tight_layout()
