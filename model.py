@@ -197,7 +197,7 @@ class model:
         self.wCO2       = self.input.wCO2 * fac # surface kinematic CO2 flux [ppm m s-1]
         self.wCO2A      = 0                     # surface assimulation CO2 flux [ppm m s-1]
         self.wCO2R      = 0                     # surface respiration CO2 flux [ppm m s-1]
-        self.wCO2e      = None                  # entrainment CO2 flux [ppm m s-1]
+        self.wCO2e      = 0                     # entrainment CO2 flux [ppm m s-1]
         self.wCO2M      = 0                     # CO2 mass flux [ppm m s-1]
        
         # Wind 
@@ -756,10 +756,11 @@ class model:
   
     def run_surface_layer(self):
         ueff           = max(0.01, np.sqrt(self.u**2. + self.v**2. + self.wstar**2.))
-        self.thetasurf = self.theta + self.wtheta / (self.Cs * ueff)
-        qsatsurf       = qsat(self.thetasurf, self.Ps)
-        cq             = (1. + self.Cs * ueff * self.rs) ** -1.
-        self.qsurf     = (1. - cq) * self.q + cq * qsatsurf
+        if (not(self.sw_ss or self.sw_so) or (self.t==0)):
+            self.thetasurf = self.theta + self.wtheta / (self.Cs * ueff)
+            qsatsurf       = qsat(self.thetasurf, self.Ps)
+            cq             = (1. + self.Cs * ueff * self.rs) ** -1.
+            self.qsurf     = (1. - cq) * self.q + cq * qsatsurf
 
         self.thetavsurf = self.thetasurf * (1. + 0.61 * self.qsurf)
   
@@ -1024,7 +1025,7 @@ class model:
         self.Tsoil    = Tsoil0  + self.dt * self.Tsoiltend
         self.wg       = wg0     + self.dt * self.wgtend
         self.Wl       = Wl0     + self.dt * self.Wltend
-        
+
     def run_sea_surface(self):
         self.Ts = self.SST
         Tatm = self.theta/((1e5/self.Ps)**(self.Rd/self.cp))
@@ -1047,6 +1048,7 @@ class model:
         self.wq       = self.LE / (self.rho * self.Lv)
         
         self.thetasurf = self.Ts*((1e5/self.Ps)**(self.Rd/self.cp))
+        self.qsurf = qsat(self.thetasurf, self.Ps)
         
     def run_solar_technology_surface(self):
         T0 = self.Ts
@@ -1099,6 +1101,7 @@ class model:
         self.wq       = self.LE / (self.rho * self.Lv)
         
         self.thetasurf = self.Ts*((100000/self.Ps)**(self.Rd/self.cp))
+        self.qsurf = qsat(self.thetasurf, self.Ps)
           
     # store model output
     def store_NetCDF(self):
